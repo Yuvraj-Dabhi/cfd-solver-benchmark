@@ -311,7 +311,7 @@ class SplitConformalPredictor:
         quantile_level = min(quantile_level, 1.0)
 
         self.q_hat = float(np.quantile(self.cal_scores, quantile_level,
-                                        interpolation='higher'))
+                                        method='higher'))
         self._calibrated = True
 
         logger.info(
@@ -533,7 +533,7 @@ class ConformalizedQuantileRegression:
         quantile_level = np.ceil((1 - self.alpha) * (n + 1)) / n
         quantile_level = min(quantile_level, 1.0)
         self.q_hat = float(np.quantile(scores, quantile_level,
-                                        interpolation='higher'))
+                                        method='higher'))
         self._calibrated = True
 
         logger.info(
