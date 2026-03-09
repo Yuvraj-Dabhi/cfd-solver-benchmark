@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/Yuvraj-Dabhi/cfd-solver-benchmark/actions/workflows/ci.yml/badge.svg)](https://github.com/Yuvraj-Dabhi/cfd-solver-benchmark/actions/workflows/ci.yml)
 
-**[Python 3.10+]** | **[SU2 v8.4.0]** | **[1616+ Tests Passed]** | **[20 Benchmark Cases]** | **[15 Turbulence Models]** | **[74 ML Modules]**
+**[Python 3.10+]** | **[SU2 v8.4.0]** | **[1643+ Tests Passed]** | **[20 Benchmark Cases]** | **[15 Turbulence Models]** | **[74 ML Modules]**
 
 Systematic benchmarking of RANS turbulence models for separated-flow prediction,
 with physics-informed ML augmentation and uncertainty quantification. Built on the
@@ -18,8 +18,9 @@ from code verification (flat plate) through complex 3D flows (NASA CRM, 3D bump)
 ```bash
 pip install -r requirements.txt        # Install dependencies
 python run_full_benchmark.py           # Run 106 verification checks (no SU2 needed)
-python -m pytest tests/ -v             # Run 1616+ tests
+python -m pytest tests/ -v             # Run 1643+ tests
 python scripts/benchmark_harness.py --report  # Generate V&V report
+jupyter notebook notebooks/demo_drl_and_operators.ipynb  # Interactive portfolio demo
 ```
 
 See **[docs/QUICK_START.md](docs/QUICK_START.md)** for the full installation guide, simulation commands, and reproducible V&V harness.
@@ -61,6 +62,26 @@ See **[docs/QUICK_START.md](docs/QUICK_START.md)** for the full installation gui
 
 ---
 
+## ML/AI Highlights
+
+| Capability | Method | Key Result |
+|---|---|---|
+| **DRL Flow Control** | PPO (zero-shot transfer) | ~90% TSB reduction on NASA wall hump |
+| **Neural Operators** | DeepONet / FNO / HUFNO | End-to-end transonic Cp prediction |
+| **Conformal Prediction** | SCP / CQR / Jackknife+ | 95% coverage with tight intervals |
+| **Generative Super-Res** | Physics-informed RANS→LES | 2x–4x upscale with spectral constraints |
+| **OOD Detection** | Interval-width thresholding | Flags extrapolation regions |
+
+```bash
+# Run ML benchmarks (no SU2 needed)
+python simulations/run_drl_hump_control.py         # DRL flow control
+python simulations/run_operator_learning.py        # Neural operator comparison
+python simulations/run_conformal_uq.py             # Conformal prediction UQ
+python simulations/run_diffusion_superres.py       # Generative super-resolution
+```
+
+---
+
 ## Project Structure
 
 ```
@@ -69,11 +90,15 @@ CFD Solver Benchmark/
 ├── run_full_benchmark.py           Master orchestrator (106 checks)
 ├── start_here.py                   Guided project entry point
 │
-├── simulations/                    SU2 simulation runner scripts (21 scripts)
+├── simulations/                    SU2 + ML simulation scripts (25 scripts)
 │   ├── run_naca0012.py             SU2 TMR runner (NACA 0012)
 │   ├── run_wall_hump.py            SU2 TMR runner (wall hump)
 │   ├── run_flat_plate.py           TMR flat plate (MRR Level 0)
-│   └── ...                         (21 simulation scripts total)
+│   ├── run_drl_hump_control.py     DRL flow control (PPO)
+│   ├── run_operator_learning.py    Neural operator benchmark
+│   ├── run_conformal_uq.py         Conformal prediction UQ
+│   ├── run_diffusion_superres.py   Generative super-resolution
+│   └── ...                         (25 simulation scripts total)
 │
 ├── scripts/                        230+ Python files across 13 sub-packages
 │   ├── benchmark_harness.py        Single-command V&V report (JSON/CSV/MD)
@@ -91,7 +116,10 @@ CFD Solver Benchmark/
 │   ├── wall_hump/                  Greenblatt Cp/Cf + TMR grids
 │   └── ...                         beverli_hill, gaussian_bump, etc.
 │
-├── tests/                          pytest suite (1616+ tests, 72 files)
+├── notebooks/                      Interactive demos
+│   └── demo_drl_and_operators.ipynb  Portfolio notebook (DRL + operators + UQ)
+│
+├── tests/                          pytest suite (1643+ tests, 72 files)
 ├── runs/                           SU2 simulation outputs
 ├── results/                        Post-processed results, JSON, plots
 ├── output/                         Generated benchmark reports
@@ -131,14 +159,16 @@ CFD Solver Benchmark/
 
 ## Test Coverage
 
-**1616+ tests** across 72 test files covering all modules, cases, and ML pipelines.
+**1643+ tests** across 72 test files covering all modules, cases, and ML pipelines.
 *(Note: These tests verify Python code logic, data parsing, and ML tensor dimensions; they do not verify CFD physics outcomes).*
 
 ```bash
-python -m pytest tests/ -v                              # Full suite
+python -m pytest tests/ -v                              # Full suite (1643+)
 python -m pytest tests/test_benchmark.py -v             # Core benchmark
+python -m pytest tests/test_conformal_prediction.py -v  # Conformal UQ
 python -m pytest tests/test_ml_physics.py -v            # ML physics modules
 python -m pytest tests/test_gnn_meshgraphnet.py -v      # GNN modules
+python -m pytest tests/test_generative_sr.py -v         # Super-resolution
 ```
 
 ---
