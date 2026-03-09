@@ -1,0 +1,102 @@
+\begin{thebibliography}{10}
+
+\bibitem{AbbottVonDoenhoff1959}
+I.~H. Abbott and A.~E. {Von Doenhoff}.
+\newblock Theory of wing sections: Including a summary of airfoil data.
+\newblock {\em Dover Publications}, 1959.
+
+\bibitem{AIAA_G077}
+{AIAA}.
+\newblock Guide for the verification and validation of computational fluid
+  dynamics simulations, 1998.
+
+\bibitem{ASME_VV20}
+{ASME}.
+\newblock Standard for verification and validation in computational fluid
+  dynamics and heat transfer, 2009.
+
+\bibitem{Bradshaw1967}
+P.~Bradshaw, D.~H. Ferriss, and N.~P. Atwell.
+\newblock Calculation of boundary-layer development using the turbulent energy
+  equation.
+\newblock {\em Journal of Fluid Mechanics}, 28(3):593--616, 1967.
+
+\bibitem{CelikEtAl2008}
+I.~B. Celik, U.~Ghia, P.~J. Roache, C.~J. Freitas, H.~Coleman, and P.~E. Raad.
+\newblock Procedure for estimation and reporting of uncertainty due to
+  discretization in {CFD} applications.
+\newblock {\em Journal of Fluids Engineering}, 130(7):078001, 2008.
+
+\bibitem{SU2_2016}
+T.~D. Economon, F.~Palacios, S.~R. Copeland, T.~W. Lukaczyk, and J.~J. Alonso.
+\newblock {SU2}: An open-source suite for multiphysics simulation and design.
+\newblock {\em AIAA Journal}, 54(3):828--846, 2016.
+
+\bibitem{Greenblatt2006}
+D.~Greenblatt, K.~B. Paschal, C.-S. Yao, and J.~Harris.
+\newblock Experimental investigation of separation control part~1: Baseline and
+  steady suction.
+\newblock {\em AIAA Journal}, 44(12):2820--2830, 2006.
+
+\bibitem{GregoryOReilly1970}
+N.~Gregory and C.~L. O'Reilly.
+\newblock Low-speed aerodynamic characteristics of {NACA} 0012 aerofoil
+  section, including the effects of upper-surface roughness simulating hoar
+  frost.
+\newblock {\em ARC R\&M 3726}, 1970.
+
+\bibitem{Ladson1988}
+C.~L. Ladson.
+\newblock Effects of independent variation of {Mach} and {Reynolds} numbers on
+  the low-speed aerodynamic characteristics of the {NACA} 0012 airfoil section.
+\newblock {\em NASA Technical Memorandum 4074}, 1988.
+
+\bibitem{Ling2016}
+J.~Ling, A.~Kurzawski, and J.~Templeton.
+\newblock Reynolds averaged turbulence modelling using deep neural networks
+  with embedded invariance.
+\newblock {\em Journal of Fluid Mechanics}, 807:155--166, 2016.
+
+\bibitem{Menter1994}
+F.~R. Menter.
+\newblock Two-equation eddy-viscosity turbulence models for engineering
+  applications.
+\newblock {\em AIAA Journal}, 32(8):1598--1605, 1994.
+
+\bibitem{NASA_TMR}
+{NASA Langley Research Center}.
+\newblock Turbulence modeling resource.
+\newblock \url{https://turbmodels.larc.nasa.gov/}, 2024.
+\newblock Accessed: February 2026.
+
+\bibitem{Roache1998}
+P.~J. Roache.
+\newblock {\em Verification and Validation in Computational Science and
+  Engineering}.
+\newblock Hermosa Publishers, Albuquerque, NM, 1998.
+
+\bibitem{Rumsey2023_40pct}
+C.~L. Rumsey et~al.
+\newblock Turbulence model assessment: Overview of the {AIAA} turbulence model
+  benchmarking working group.
+\newblock In {\em AIAA AVIATION 2023 Forum}, 2023.
+
+\bibitem{Slotnick2014}
+J.~Slotnick, A.~Khodadoust, J.~Alonso, D.~Darmofal, W.~Gropp, E.~Lurie, and
+  D.~Mavriplis.
+\newblock {CFD} vision 2030 study: A path to revolutionary computational
+  aerosciences.
+\newblock Technical Report NASA/CR-2014-218178, NASA, 2014.
+
+\bibitem{SpalartAllmaras1992}
+P.~R. Spalart and S.~R. Allmaras.
+\newblock A one-equation turbulence model for aerodynamic flows.
+\newblock {\em La Recherche A{\'e}rospatiale}, 1:5--21, 1994.
+\newblock Also AIAA Paper 92-0439.
+
+\bibitem{Wilcox2006}
+D.~C. Wilcox.
+\newblock {\em Turbulence Modeling for {CFD}}.
+\newblock DCW Industries, La Ca\~{n}ada, CA, 3rd edition, 2006.
+
+\end{thebibliography}

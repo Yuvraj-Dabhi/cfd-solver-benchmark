@@ -1,0 +1,222 @@
+{
+  "naca0012_ensemble": {
+    "statistics": {
+      "alpha_0": {
+        "alpha": 0.0,
+        "CL": {
+          "min": 0.0,
+          "max": 0.0,
+          "mean": 0.0,
+          "std": 0.0,
+          "spread": 0.0,
+          "spread_pct": 0.0,
+          "values": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "CD": {
+          "min": 0.00812,
+          "max": 0.0083,
+          "mean": 0.008165714285714287,
+          "std": 6.0203735730586954e-05,
+          "spread": 0.0001799999999999996,
+          "spread_pct": 2.204338698390478,
+          "values": [
+            0.00819,
+            0.00812,
+            0.00813,
+            0.00812,
+            0.00813,
+            0.0083,
+            0.00817
+          ]
+        },
+        "n_codes": 7,
+        "codes": [
+          "CFL3D",
+          "FUN3D",
+          "NTS",
+          "JOE",
+          "SUMB",
+          "TURNS",
+          "GGNS"
+        ]
+      },
+      "alpha_10": {
+        "alpha": 10.0,
+        "CL": {
+          "min": 1.0891,
+          "max": 1.1,
+          "mean": 1.0935142857142857,
+          "std": 0.003859470197330441,
+          "spread": 0.010900000000000132,
+          "spread_pct": 0.9967862461787803,
+          "values": [
+            1.0909,
+            1.0983,
+            1.0891,
+            1.0918,
+            1.0904,
+            1.1,
+            1.0941
+          ]
+        },
+        "CD": {
+          "min": 0.01225,
+          "max": 0.01245,
+          "mean": 0.012355714285714286,
+          "std": 7.128557114214065e-05,
+          "spread": 0.0001999999999999988,
+          "spread_pct": 1.6186842409527016,
+          "values": [
+            0.01231,
+            0.01242,
+            0.01243,
+            0.01245,
+            0.01233,
+            0.0123,
+            0.01225
+          ]
+        },
+        "n_codes": 7,
+        "codes": [
+          "CFL3D",
+          "FUN3D",
+          "NTS",
+          "JOE",
+          "SUMB",
+          "TURNS",
+          "GGNS"
+        ]
+      },
+      "alpha_15": {
+        "alpha": 15.0,
+        "CL": {
+          "min": 1.5446,
+          "max": 1.5642,
+          "mean": 1.551757142857143,
+          "std": 0.0067660617671386186,
+          "spread": 0.019600000000000062,
+          "spread_pct": 1.2630842455097027,
+          "values": [
+            1.5461,
+            1.5547,
+            1.5461,
+            1.549,
+            1.5446,
+            1.5642,
+            1.5576
+          ]
+        },
+        "CD": {
+          "min": 0.02073,
+          "max": 0.02159,
+          "mean": 0.02127142857142857,
+          "std": 0.00027357049608196224,
+          "spread": 0.0008600000000000031,
+          "spread_pct": 4.042981867024864,
+          "values": [
+            0.02124,
+            0.02159,
+            0.02105,
+            0.02148,
+            0.02141,
+            0.0214,
+            0.02073
+          ]
+        },
+        "n_codes": 7,
+        "codes": [
+          "CFL3D",
+          "FUN3D",
+          "NTS",
+          "JOE",
+          "SUMB",
+          "TURNS",
+          "GGNS"
+        ]
+      }
+    }
+  },
+  "wall_hump_comparison": {
+    "experimental": {
+      "x_sep": 0.665,
+      "x_reat": 1.11,
+      "bubble_length": 0.445,
+      "cf_min": -0.003,
+      "source": "Greenblatt et al. (2006)"
+    },
+    "models": {
+      "SA (CFL3D, TMR)": {
+        "x_sep": 0.665,
+        "x_reat": 1.26,
+        "bubble_length": 0.595,
+        "source": "TMR / Rumsey (2006)",
+        "notes": "Over-predicts bubble length by ~34%",
+        "bubble_error_pct": 33.70786516853932,
+        "reat_error": 0.1499999999999999
+      },
+      "SA (FUN3D)": {
+        "x_sep": 0.666,
+        "x_reat": 1.27,
+        "bubble_length": 0.604,
+        "source": "TMR",
+        "notes": "Similar to CFL3D SA",
+        "bubble_error_pct": 35.73033707865168,
+        "reat_error": 0.15999999999999992
+      },
+      "SST (CFL3D)": {
+        "x_sep": 0.66,
+        "x_reat": 1.24,
+        "bubble_length": 0.58,
+        "source": "Rumsey (2006)",
+        "notes": "Slightly shorter bubble than SA",
+        "bubble_error_pct": 30.337078651685385,
+        "reat_error": 0.1299999999999999
+      },
+      "v2-f (various)": {
+        "x_sep": 0.66,
+        "x_reat": 1.18,
+        "bubble_length": 0.52,
+        "source": "CFDVAL2004 Workshop",
+        "notes": "Closest to experiment among linear models",
+        "bubble_error_pct": 16.853932584269664,
+        "reat_error": 0.06999999999999984
+      },
+      "RSM (Lien-Leschziner)": {
+        "x_sep": 0.665,
+        "x_reat": 1.15,
+        "bubble_length": 0.485,
+        "source": "CFDVAL2004 Workshop",
+        "notes": "Reynolds stress model, improved reattachment",
+        "bubble_error_pct": 8.988764044943816,
+        "reat_error": 0.039999999999999813
+      },
+      "SU2 SA (this study)": {
+        "x_sep": 0.6673230528831482,
+        "x_reat": 1.2600038051605225,
+        "bubble_length": 0.5926807522773743,
+        "cf_min": -0.0028263856656849384,
+        "source": "This study (SU2)",
+        "bubble_error_pct": 33.18668590502792,
+        "reat_error": 0.15000380516052236
+      }
+    },
+    "consensus": {
+      "all_overpredict_bubble": true,
+      "bubble_range": [
+        0.485,
+        0.604
+      ],
+      "bubble_mean": 0.5568,
+      "separation_well_captured": true,
+      "interpretation": "All RANS models consistently over-predict the separation bubble length and delay reattachment. Separation location is well-captured across models (within +/-0.005c), confirming it is primarily governed by the adverse pressure gradient geometry. Reattachment is controlled by the turbulence model's ability to predict the separated shear layer development, explaining the persistent RANS deficiency."
+    }
+  }
+}

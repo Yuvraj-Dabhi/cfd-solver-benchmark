@@ -1,0 +1,17 @@
+{
+  "metrics": {
+    "cross_validation_RMSE": 545.1939975703491,
+    "cross_validation_correlation": 0.23627172276035463
+  },
+  "separation_points": [
+    [
+      "separation",
+      0.673585832118988
+    ],
+    [
+      "reattachment",
+      1.1834169626235962
+    ]
+  ],
+  "bubble_length": 0.5098311305046082
+}

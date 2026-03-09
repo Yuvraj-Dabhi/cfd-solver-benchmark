@@ -1,0 +1,43 @@
+# CFD Solver Benchmark for Flow Separation Prediction
+# ===================================================
+# Core dependencies for all phases
+
+# --- Core Scientific ---
+numpy>=1.24
+scipy>=1.10
+pandas>=1.5
+
+# --- Visualization ---
+matplotlib>=3.7
+pyvista>=0.38              # 3D field visualization
+cmocean>=3.0               # Perceptually uniform colormaps
+
+# --- CFD Interface ---
+# PyFoam>=2023.1            # OpenFOAM Python interface (install from git/conda)
+meshio>=5.3                 # Mesh format conversion
+
+# --- Machine Learning ---
+scikit-learn>=1.2
+tensorflow>=2.12            # PINN, TurbulenceModelCorrection
+torch>=2.0                  # GNN, FIML NN embedding, native inference
+
+# --- Graph Neural Networks ---
+torch-geometric>=2.5        # MeshGraphNet, PG-GNN (requires torch)
+
+# --- Sensitivity Analysis & UQ ---
+SALib>=1.4                  # Sobol, Morris, FAST
+statsmodels>=0.14           # ANOVA, Tukey HSD
+
+# --- Testing ---
+pytest>=7.3
+pytest-cov>=4.0
+
+# --- Documentation ---
+jupyter>=1.0
+nbconvert>=7.0
+Sphinx>=5.0                 # API docs (optional)
+
+# --- Utilities ---
+tqdm>=4.65                  # Progress bars
+PyYAML>=6.0                 # Config loading
+click>=8.1                  # CLI framework

@@ -1,0 +1,11 @@
+{
+  "naca0012_transfer": {
+    "mean_reward": -0.004527429339845478,
+    "std_reward": 0.0,
+    "mean_bubble_reduction": -0.0003539128049514798,
+    "max_bubble_reduction": -0.0003539128049514798
+  },
+  "beverli_marl": {
+    "final_global_reward": 0.04552015183790775
+  }
+}

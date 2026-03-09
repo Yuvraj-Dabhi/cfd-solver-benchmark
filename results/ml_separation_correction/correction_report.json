@@ -1,0 +1,36 @@
+{
+  "training": {
+    "n_samples": 90,
+    "n_features": 8,
+    "train_r2": 0.9724122466296443,
+    "val_r2": 0.9590661743751567,
+    "cv_r2_mean": 0.957743684274266,
+    "cv_r2_std": 0.03315587530607615
+  },
+  "results": {
+    "SA": {
+      "raw_x_sep": 0.66593253891547,
+      "corrected_x_sep": 0.6650445806394278,
+      "raw_x_reatt": 1.1009881893065714,
+      "corrected_x_reatt": 1.1028260502564595,
+      "sep_error_reduction_pct": 95.21943388224844,
+      "reatt_error_reduction_pct": -185.9826793982351
+    },
+    "SST": {
+      "raw_x_sep": 0.6607402891717012,
+      "corrected_x_sep": 0.663425739327062,
+      "raw_x_reatt": 1.1514218907496023,
+      "corrected_x_reatt": 1.1106501296262532,
+      "sep_error_reduction_pct": 63.043015444153895,
+      "reatt_error_reduction_pct": 79.28872417758093
+    },
+    "kEpsilon": {
+      "raw_x_sep": 0.6710199147208952,
+      "corrected_x_sep": 0.6662542205938785,
+      "raw_x_reatt": 1.0806927810759162,
+      "corrected_x_reatt": 1.098113321401638,
+      "sep_error_reduction_pct": 79.16547572467975,
+      "reatt_error_reduction_pct": 90.22811827130344
+    }
+  }
+}

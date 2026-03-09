@@ -1,0 +1,8 @@
+{
+  "su2_wall_distance": "Exact point search (geometric)",
+  "openfoam_wall_distance": "meshWave (PDE-based approximate)",
+  "openfoam_mesh": "Gmsh structured quad 205x55 (11275 cells)",
+  "su2_mesh": "TMR structured quad 205x55 (11016 cells)",
+  "openfoam_convergence": "254 SIMPLE iterations",
+  "openfoam_version": "OpenFOAM 13"
+}

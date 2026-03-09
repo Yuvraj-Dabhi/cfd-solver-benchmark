@@ -1,0 +1,26 @@
+{
+  "train_case": "periodic_hill",
+  "test_case": "wall_hump",
+  "train_r2": 0.9791046730269105,
+  "test_r2_beta": -1.3154912477156033,
+  "bubble_baseline": 0.535,
+  "bubble_corrected": 0.4230021834373474,
+  "bubble_experiment": 0.445,
+  "bubble_improvement_pct": 75.55799102783203,
+  "cf_attached_degradation_pct": 9.335490226745605,
+  "passed": false,
+  "loco_cv": {
+    "periodic_hill": {
+      "r2_train": 0.8906796439910257,
+      "r2_test": -0.6466945754684834
+    },
+    "wall_hump": {
+      "r2_train": 0.9547173914995003,
+      "r2_test": -3.0720507411521103
+    },
+    "bfs_like": {
+      "r2_train": 0.9714580435713049,
+      "r2_test": -0.8095512315153213
+    }
+  }
+}

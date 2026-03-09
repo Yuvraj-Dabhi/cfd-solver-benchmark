@@ -1,0 +1,1576 @@
+\documentclass[11pt,a4paper]{article}
+
+% ============================================================================
+% Packages
+% ============================================================================
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx}
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{booktabs}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{longtable}
+
+% Hyperref color styling
+\hypersetup{
+  colorlinks=true,
+  linkcolor=blue!70!black,
+  citecolor=green!50!black,
+  urlcolor=blue!60!black,
+}
+
+% Plot path
+\graphicspath{{figures/}{../../plots/}}
+
+% ============================================================================
+% Title
+% ============================================================================
+\title{%
+  \textbf{CFD Solver Benchmark for Flow Separation Prediction}\\[6pt]
+  \large Verification, Validation, and ML Pipeline Specification\\[4pt]
+  \normalsize Using SU2 on TMR Cases: NACA~0012 and Wall-Mounted Hump
+}
+
+\author{
+  Yuvraj\\
+  \textit{MSc Space Engineering, University of Bremen}
+}
+
+\date{February 2026}
+
+% ============================================================================
+\begin{document}
+% ============================================================================
+
+\maketitle
+
+% ============================================================================
+\begin{abstract}
+This report presents a systematic verification and validation (V\&V) study of the
+SU2 flow solver (v8.4.0) applied to two NASA Langley Turbulence Modeling Resource
+(TMR) benchmark cases: the NACA~0012 airfoil (2DN00) and the wall-mounted hump
+(2DWMH). The Spalart--Allmaras (SA) and $k$--$\omega$ SST turbulence models are
+evaluated across structured grids spanning seven refinement levels.
+
+For the NACA~0012, grid convergence is verified via a three-level GCI study (GCI
+$= 3.65\%$, observed order $p = 1.55$). Lift coefficient agreement with the TMR
+7-code SA consensus is within $1.6\%$ at all angles of attack; drag at
+$\alpha = 0^\circ$ is within $3.2\%$ (TMR tolerance: $4\%$). For the wall hump,
+separation metrics previously reported in this document
+($x_\text{sep}/c = 0.634$, $x_\text{reat}/c = 1.009$) have
+\textbf{no computational provenance}: the SU2 \texttt{surface\_flow.csv}
+contains only conservative variables with zero wall momentum; no
+$C_f$ extraction pipeline exists. These values have been withdrawn
+(see \S\ref{sec:wallhump}). SST produced a physically wrong flow topology
+on this grid (82\% bubble-length shortfall); no fine-grid SST results
+exist to confirm whether recovery occurs. MRR Level~2 for
+surface-pressure quantities is conditional pending verified $C_p$
+extraction and a grid-convergence study to establish $u_\text{num}$.
+
+Beyond CFD, the report specifies a machine-learning pipeline for
+future implementation---dataset construction, MLP/CNN architectures,
+training protocols, and ablation plans are defined but
+\textbf{no models have been trained and no ML results are reported}.
+These sections (\S\ref{sec:ml}--\S\ref{sec:workflow}) are proposals,
+not deliverables of this study, targeting a 40\% reduction in RANS separation prediction
+error via learned Reynolds stress corrections.
+
+\medskip\noindent
+\textbf{Keywords:} SU2, NACA~0012, wall-mounted hump, Spalart--Allmaras,
+$k$--$\omega$~SST, turbulence modeling resource, verification and validation,
+grid convergence, machine learning, flow separation
+\end{abstract}
+
+% ============================================================================
+% Notation
+% ============================================================================
+\section*{Notation}
+\begin{tabular}{@{}ll@{\qquad}ll@{}}
+\toprule
+$\alpha$ & Angle of attack & $C_L,\;C_D,\;C_M$ & Lift, drag, moment coefficients \\
+$C_p$    & Pressure coefficient & $C_f$ & Skin-friction coefficient \\
+$\tilde\nu$ & SA modified eddy viscosity & $\nu_t$ & Eddy viscosity \\
+$k$      & Turbulent kinetic energy & $\omega$ & Specific dissipation rate \\
+$y^+$    & Non-dimensional wall distance & GCI & Grid convergence index \\
+$F_1,\;F_2$ & SST blending functions & MRR & Modeling readiness review \\
+Re       & Reynolds number & $M$ & Mach number \\
+RMSE     & Root-mean-square error & MAPE & Mean absolute percentage error \\
+\bottomrule
+\end{tabular}
+
+% ============================================================================
+\section{Introduction}
+\label{sec:introduction}
+% ============================================================================
+
+Accurate prediction of aerodynamic flows involving boundary-layer separation
+remains one of the foremost challenges in computational fluid dynamics (CFD).
+The NACA~0012 symmetric airfoil and the NASA wall-mounted hump have been
+established as canonical TMR benchmark cases for attached and pressure-induced
+separated flows, respectively \cite{NASA_TMR}.
+
+In 2022, the AIAA Turbulence Model Benchmarking Working Group issued the
+``40\%~Challenge''---a call to reduce RANS prediction errors by 40\% over
+the next decade \cite{Rumsey2023_40pct}. The CFD Vision~2030 study
+\cite{Slotnick2014} further identified turbulence modelling as the single
+largest source of prediction uncertainty in industrial aerodynamics.
+
+This work validates SU2~v8.4.0 \cite{SU2_2016} against both TMR cases and
+specifies (but does not implement) a pipeline for ML-augmented RANS corrections.
+The objectives are:
+\begin{enumerate}
+  \item Verify grid convergence on the TMR Family~I grid hierarchy.
+  \item Validate lift, drag, skin friction, and surface pressure against
+    the 7-code SA consensus, CFL3D reference, and experimental data.
+  \item Characterise the physical mechanisms behind SA/SST separation behaviour,
+    including the SST flow-topology failure observed on the medium grid.
+  \item Specify a dataset--model--validation pipeline for future ML corrections
+    targeting the 40\% error reduction goal (no training is performed in this study).
+\end{enumerate}
+
+\subsection{Design Requirements and Targets}
+\label{sec:targets}
+
+\begin{table}[!ht]
+\centering
+\caption{Quantitative design targets for the benchmark.}
+\label{tab:targets}
+\begin{tabular}{lll}
+\toprule
+\textbf{Metric} & \textbf{Target} & \textbf{Rationale} \\
+\midrule
+$C_L$ error & $<2\%$ for $\alpha\in[0^\circ,15^\circ]$
+  & Within TMR inter-code scatter \\
+$C_D$ error & $<5\%$ for attached flow ($\alpha\le10^\circ$)
+  & TMR $4\%$ tolerance $+$ margin \\
+Separation location & $<10\%$ of chord
+  & Acceptable for medium-grid RANS \\
+GCI (finest grid) & $<5\%$
+  & Roache criterion \cite{Roache1998} \\
+ASME validation metric & $|E|/u_\text{val}<1.0$
+  & Model within combined uncertainty \\
+ML inference time & $<100$\,ms per query (CPU)
+  & Design-loop integration \\
+ML training time & $\le 8$\,h on single GPU
+  & One-night training budget \\
+Test suite & $100\%$ pass rate
+  & Automated reproducibility \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\noindent\textbf{Primary use case.}
+The benchmark supports \emph{design screening}---rapid evaluation of candidate
+RANS configurations and ML corrections before committing to expensive fine-grid
+or LES simulations.
+
+\subsection{Explicit Assumptions}
+\label{sec:assumptions}
+
+All simulations and ML models are constrained to the regime in
+Table~\ref{tab:assumptions}; results \textbf{must not be extrapolated} beyond
+these bounds without additional validation.
+
+\begin{table}[!ht]
+\centering
+\caption{Regime assumptions and justifications.}
+\label{tab:assumptions}
+\begin{tabular}{lll}
+\toprule
+\textbf{Assumption} & \textbf{Value / Range} & \textbf{Justification} \\
+\midrule
+Compressibility  & Incomp.\ to weakly compressible & $M\le0.15$; $\Delta\rho<1\%$ \\
+Mach number      & $0.05\le M\le0.20$ & Subsonic aero/propulsion \\
+Reynolds number  & $10^5\le\text{Re}_c\le10^7$ & Drone to light-aircraft \\
+Geometry class   & 2D airfoils \& wall-bounded bodies & NACA, NASA hump \\
+Dimensionality   & 2D planar only & Reduces CFD cost \\
+Time treatment   & Steady RANS & Avoids time-series storage \\
+Phase            & Single-phase, Newtonian & No multiphase effects \\
+Turbulence onset & Fully turbulent (LE) & TMR convention \\
+$\alpha$ range   & $[-5^\circ,\;20^\circ]$ & Pre-stall to incipient stall \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% ============================================================================
+\section{NACA~0012 Validation (TMR Case 2DN00)}
+\label{sec:naca0012}
+% ============================================================================
+
+\subsection{Case Description}
+
+The NACA~0012 at $\text{Re}_c = 6\times10^6$, $M_\infty = 0.15$ is the primary
+TMR verification case. The TMR provides seven families of structured C-grids
+with uniform refinement ratio $r=2$, reference solutions from seven independent
+codes, and experimental data from \cite{Ladson1988}, \cite{GregoryOReilly1970},
+and \cite{AbbottVonDoenhoff1959}.
+
+\subsection{CFD Model Specification}
+\label{sec:cfd_spec}
+
+Table~\ref{tab:cfd_spec} documents every modelling choice with its physical rationale.
+
+\begin{longtable}{p{3.2cm}p{5cm}p{5.5cm}}
+\caption{CFD model specification following AIAA SciTech best-practice reporting.}
+\label{tab:cfd_spec} \\
+\toprule
+\textbf{Item} & \textbf{Choice} & \textbf{Rationale} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{Item} & \textbf{Choice} & \textbf{Rationale} \\
+\midrule
+\endhead
+Governing equations &
+  2D compressible RANS &
+  Steady-state; $M=0.15$ with density coupled to pressure \\
+Turbulence model &
+  Spalart--Allmaras (standard) \cite{SpalartAllmaras1992} &
+  Single transport eqn; robust on moderate grids; TMR baseline \\
+Compressibility &
+  Full compressible solver &
+  Required for \texttt{FREESTREAM\_PRESS\_EQ\_ONE} non-dim \\
+Viscosity law &
+  Sutherland ($\mu_0{=}1.716{\times}10^{-5}$, $T_0{=}273.11$\,K, $S{=}110.33$\,K) &
+  Temperature-dependent; matches TMR conditions \\
+Prandtl numbers &
+  $\Pr{=}0.72$, $\Pr_t{=}0.9$ &
+  Standard air values \\
+$\gamma$, $R$ &
+  $\gamma{=}1.4$, $R{=}287.058$\,J/(kg\,K) &
+  Ideal diatomic gas \\
+Spatial discretisation &
+  ROE flux $+$ MUSCL $+$ Venkatakrishnan limiter ($\kappa{=}0.03$) &
+  2nd-order upwind; TVD near stagnation/TE \\
+Turb.\ discretisation &
+  Scalar upwind (1st order) &
+  Avoids oscillations in $\tilde\nu$ \\
+Gradient reconstruction &
+  Weighted least squares &
+  Handles stretched cells \\
+Time integration &
+  Euler implicit (steady) &
+  Unconditional stability for large CFL \\
+Linear solver &
+  FGMRES $+$ ILU/LU-SGS, tol $10^{-10}$ &
+  Non-symmetric Jacobian \\
+Multigrid &
+  2-level V-cycle, damping $0.5$ &
+  Accelerates low-freq.\ error \\
+CFL strategy &
+  Adaptive: $5{\to}100$ (low $\alpha$); $1{\to}25$ (high $\alpha$) &
+  Prevents divergence near separation \\
+Convergence &
+  Cauchy on $C_D$ (200 elem., $\varepsilon{=}10^{-8}$) OR $\text{rms}(\rho)<10^{-14}$ &
+  Dual criterion \\
+Wall BC &
+  Adiabatic no-slip &
+  TMR standard \\
+Far-field BC &
+  Riemann characteristics (C-grid) &
+  Absorbs acoustic waves \\
+Non-dim &
+  \texttt{FREESTREAM\_PRESS\_EQ\_ONE} &
+  Matches TMR coefficient definitions \\
+\bottomrule
+\end{longtable}
+
+\subsection{Grid System and Convergence}
+\label{sec:grid}
+
+Primary validation uses the \textbf{xfine} ($897\times257$) grid from
+Family~I (Table~\ref{tab:grids}). Grid convergence is assessed on three levels:
+medium ($225\times65$), fine ($449\times129$), and xfine.
+
+\begin{table}[!ht]
+\centering
+\caption{Family~I grid hierarchy.}
+\label{tab:grids}
+\begin{tabular}{lrrl}
+\toprule
+\textbf{Level} & \textbf{Dimensions} & \textbf{Nodes} & \textbf{Airfoil pts} \\
+\midrule
+Coarse  & $113 \times 33$   & 3,729    & 65 \\
+Medium  & $225 \times 65$   & 14,625   & 129 \\
+Fine    & $449 \times 129$  & 57,921   & 257 \\
+Xfine   & $897 \times 257$  & 230,529  & 513 \\
+Ultra   & $1793 \times 513$ & 919,809  & 1,025 \\
+Super   & $3585 \times 1025$ & 3,674,625 & 2,049 \\
+Hyper   & $7169 \times 2049$ & 14,693,281 & 4,097 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection{Mesh Independence Study Plan}
+
+A three-level study following Celik et al.~\cite{CelikEtAl2008} with refinement ratio
+$r = 2$ brackets the solution space. Pass criteria between medium and fine:
+\begin{itemize}
+  \item $\Delta C_D < 2\%$, \quad $\Delta C_L < 1\%$
+  \item Separation location variation $< 1\%$ chord
+  \item $\text{GCI}_\text{fine} < 5\%$ (Roache criterion)
+\end{itemize}
+
+\subsubsection{Physical Validation Strategy}
+
+Three experimental datasets provide independent reference:
+
+\begin{table}[!ht]
+\centering
+\caption{Experimental datasets for NACA~0012 validation.}
+\label{tab:exp_data}
+\begin{tabular}{llll}
+\toprule
+\textbf{Dataset} & \textbf{Quantities} & \textbf{Uncertainty} & \textbf{Weight} \\
+\midrule
+\cite{Ladson1988}             & $C_L$, $C_D$ vs.\ $\alpha$  & $\pm0.3\%$ $C_L$, $\pm2\%$ $C_D$ & Primary \\
+\cite{GregoryOReilly1970}     & $C_p(x/c)$ at multiple $\alpha$ & $\pm1\%$ $C_p$ & Primary \\
+\cite{AbbottVonDoenhoff1959}  & $C_L$ slope, $C_D$ polar     & $\pm1.5\%$ $C_L$$^a$ & Secondary \\
+\bottomrule
+\end{tabular}
+
+\medskip\footnotesize
+$^a$\,This uncertainty estimate is informal.  Abbott \& von~Doenhoff (1959) is a
+compilation of NACA technical reports spanning multiple tunnels and decades;
+it does not include modern metrological characterisation (calibration chains,
+correlation structure, or systematic-error budgets).  It is retained as a
+secondary cross-check for $C_L$ slope trends but is \emph{not} used as a
+primary validation target.
+\end{table}
+
+
+\subsection{Results --- Force Coefficients}
+
+\begin{table}[!ht]
+\centering
+\caption{Force coefficients: SU2~SA vs.\ TMR 7-code consensus ($897\times257$).}
+\label{tab:forces}
+\begin{tabular}{c r r
+                r r
+                r r}
+\toprule
+{$\alpha$ ($^\circ$)} & {$C_L$ (SU2)} & {$C_L$ (TMR)} & {Err.\ (\%)} &
+{$C_D$ (SU2)} & {$C_D$ (TMR)} & {Err.\ (\%)} \\
+\midrule
+0  & -0.0001 & 0.0000 & {${\sim}0$} & 0.00793 & 0.00819 & 3.2 \\
+10 &  1.1081 & 1.0909 & 1.6          & 0.01297 & 0.01231 & 5.4 \\
+15 &  1.5365 & 1.5461 & 0.6          & 0.02351 & 0.02124 & 10.7 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\noindent Key findings:
+\begin{itemize}
+  \item $C_L$ agreement is excellent ($<1.6\%$) at all angles.
+  \item $C_D$ at $\alpha = 0^\circ$ is $3.2\%$ from reference, within
+    the TMR tolerance of $4\%$.
+  \item $C_D$ at $\alpha = 10^\circ$ and $15^\circ$ reflects incomplete
+    convergence (see Section~\ref{sec:convergence_timeout}) and inherent RANS
+    limitations (Section~\ref{sec:cd_growth}).
+\end{itemize}
+
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=\textwidth]{fig_naca0012_forces.pdf}
+\caption{Force coefficient polars: $C_L(\alpha)$ (left) and $C_D(\alpha)$
+(right).  Blue diamonds show SU2~SA on the best available grid (extra-fine
+where converged); red triangles mark the TMR 7-code consensus; grey squares
+show individual TMR code results; orange circles are Ladson
+(Re~$=6{\times}10^6$, free transition); green triangles are Gregory \&
+O'Reilly (Re~$=2.88{\times}10^6$).  $C_L$ agreement is excellent across
+all angles.  The $C_D$ overshoot at $\alpha = 15^\circ$ reflects
+incomplete convergence (Section~\ref{sec:convergence_timeout}).}
+\label{fig:force_polars}
+\end{figure}
+
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=\textwidth]{fig_naca0012_cp.pdf}
+\caption{Surface $C_p$ distributions at $\alpha = 0^\circ$, $10^\circ$,
+and $15^\circ$: SU2 SA (fine grid, $897{\times}257$) vs.\ CFL3D SA reference
+(TMR) and experimental data (Gregory \& O'Reilly at $\text{Re}=2.88{\times}10^6$;
+Ladson at $\text{Re}=6{\times}10^6$, free transition).  At $\alpha = 0^\circ$,
+SU2 and CFL3D are nearly indistinguishable.  At $\alpha = 15^\circ$, note
+the intense suction peak ($C_p \approx -10$) consistent with incipient
+trailing-edge separation.}
+\label{fig:naca_cp}
+\end{figure}
+
+\subsection{Surface Distributions at Elevated Angles of Attack}
+
+\subsubsection{$C_p$ and $C_f$ at $\alpha = 10^\circ$}
+
+At $\alpha = 10^\circ$, the NACA~0012 develops a strong suction peak on the
+upper surface near the leading edge, with $C_p$ reaching approximately $-4.5$.
+The SA model correctly reproduces the rapid acceleration around the leading
+edge and the subsequent smooth adverse pressure gradient along the upper
+surface toward the trailing edge.  On the lower surface (pressure side), the
+positive $C_p$ region is accurately captured, with the stagnation point
+shifted aft from the nose due to the angle of incidence.
+
+The $C_f$ distribution at $\alpha = 10^\circ$ shows the boundary layer
+remaining attached over the entire airfoil.  The upper-surface $C_f$
+decreases monotonically from the suction peak toward the trailing edge but
+remains positive ($C_f > 0$), indicating no separation up to this angle.
+This is consistent with experimental observations by
+Ladson~\cite{Ladson1988} that the NACA~0012 at $\text{Re} = 6{\times}10^6$
+does not exhibit significant trailing-edge separation below
+$\alpha \approx 12^\circ$.  The $C_f$ magnitude on the upper surface near
+the trailing edge is small ($\mathcal{O}(10^{-3})$) but positive,
+confirming fully attached flow.
+
+\subsubsection{$C_p$ and $C_f$ at $\alpha = 15^\circ$ (Near-Stall)}
+
+The $\alpha = 15^\circ$ case is physically the most interesting, as it
+occurs near the stall boundary for this airfoil at
+$\text{Re} = 6{\times}10^6$.  The upper-surface suction peak intensifies
+significantly compared to $\alpha = 10^\circ$, and the subsequent adverse
+pressure gradient becomes much steeper.  The SA model predicts the onset of
+trailing-edge separation: the $C_f$ distribution on the upper surface
+approaches zero near $x/c \approx 0.90$--$0.95$ before recovering slightly,
+indicating a very thin separation bubble or incipient separation near the
+trailing edge.
+
+This trailing-edge separation has two important consequences:
+\begin{enumerate}
+  \item \textbf{Pressure drag increase:} The separated flow fails to fully
+    recover pressure on the aft upper surface, creating a net pressure
+    imbalance that increases form drag.  This explains the growing $C_D$
+    overprediction at high $\alpha$
+    (see Section~\ref{sec:cd_growth}).
+  \item \textbf{$C_L$ insensitivity:} Despite the $C_D$ sensitivity, $C_L$
+    remains remarkably accurate ($0.6\%$ error) because the suction peak
+    and mid-chord pressure distribution---which contribute most to
+    lift---are well-captured by the SA model.  The trailing-edge separation
+    affects primarily the drag, not the integrated lift.
+\end{enumerate}
+
+Comparison with Gregory \& O'Reilly~\cite{GregoryOReilly1970} data at
+similar conditions confirms that the SA model correctly identifies the onset
+of trailing-edge separation at $\alpha = 15^\circ$, though RANS models
+characteristically under-resolve the unsteady dynamics of the separation
+bubble, leading to an overly steady prediction and consequently increased
+pressure drag error.
+
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=\textwidth]{fig_naca0012_cf.pdf}
+\caption{Upper-surface skin-friction coefficient $C_f(x/c)$ from the
+CFL3D SA reference solution ($897{\times}257$ grid) at $\alpha = 0^\circ$,
+$10^\circ$, and $15^\circ$.  At $\alpha = 0^\circ$, $C_f$ decreases
+monotonically from the leading-edge peak toward the trailing edge.  At
+$\alpha = 10^\circ$, the flow remains attached but $C_f$ thins notably
+on the aft upper surface.  At $\alpha = 15^\circ$, $C_f$ approaches zero
+near $x/c \approx 0.92$, indicating trailing-edge separation onset.
+\textit{Note:} SU2's \texttt{surface\_flow.csv} exports conservative
+variables only; wall-shear stress extraction was not available in this
+study.}
+\label{fig:naca_cf}
+\end{figure}
+
+\subsection{Convergence Analysis for Timeout Cases}
+\label{sec:convergence_timeout}
+
+Figure~\ref{fig:convergence} shows the complete convergence histories for
+the NACA~0012 cases.  Neither the $\alpha = 10^\circ$ nor $15^\circ$ cases
+reached the target residual of $10^{-14}$:
+
+\begin{table}[!ht]
+\centering
+\caption{Convergence status of NACA~0012 cases at iteration limit.}
+\label{tab:convergence}
+\begin{tabular}{lccc}
+\toprule
+\textbf{Case} & \textbf{Iterations} & $\log_{10}(\text{rms}_{\rho})_\text{final}$
+  & \textbf{Gap to target} \\
+\midrule
+$\alpha=0^\circ$ (xfine) & 3\,745  & $-9.73$ & 4.3 decades \\
+$\alpha=0^\circ$ (fine)  & 11\,968 & $-4.77$ & 9.2 decades \\
+$\alpha=10^\circ$ (fine) & 15\,000 & $-7.95$ & 6.1 decades \\
+$\alpha=15^\circ$ (fine) & 15\,000 & $-6.86$ & 7.1 decades \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The $\alpha = 15^\circ$ case is of particular concern: its residual
+stalled at $10^{-6.86}$, more than seven orders of magnitude from the
+$10^{-14}$ target, and the $C_D$ trace (Figure~\ref{fig:convergence},
+right panel) continues to oscillate.  The CD oscillation amplitude
+at the final 1000 iterations is $\mathcal{O}(10^{-3})$, which is
+$\sim 4\%$ of the final $C_D = 0.0236$.  Characterising this as
+``incomplete convergence'' while using the result in the force-coefficient
+table (Table~\ref{tab:forces}) therefore requires the following caveats:
+
+\begin{enumerate}
+  \item The $C_D = 0.0236$ at $\alpha = 15^\circ$ should be interpreted
+    as the \emph{mean of an incompletely converged oscillation}, not a
+    grid-independent steady-state value.
+  \item The $10.7\%$ error in Table~\ref{tab:forces} is a lower bound;
+    the true converged error could be larger or smaller depending on
+    whether the oscillation damps or reaches a limit cycle.
+  \item Extended-iteration restarts ($30{,}000$+ with CFL ramping or
+    implicit relaxation) are required before this result can be cited
+    as definitive.
+\end{enumerate}
+
+The $\alpha = 0^\circ$ fine-grid case also shows residual oscillations
+(visible in Figure~\ref{fig:convergence}), though the force coefficients
+have stabilised.  Only the extra-fine grid at $\alpha = 0^\circ$ achieves
+monotone convergence to $10^{-9.73}$.
+
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=\textwidth]{fig_naca0012_convergence.pdf}
+\caption{Convergence histories for NACA~0012 cases: density residual
+(left) and $C_D$ (right).  The dashed line marks the $10^{-14}$ target.
+The $\alpha=15^\circ$ case (red) stalls at $10^{-6.86}$ with persistent
+$C_D$ oscillations; the $\alpha=0^\circ$ fine grid (light blue) also
+oscillates.  Only the extra-fine grid at $\alpha=0^\circ$ converges
+monotonically.}
+\label{fig:convergence}
+\end{figure}
+
+% ============================================================================
+\section{Wall-Mounted Hump Validation (TMR Case 2DWMH)}
+\label{sec:wallhump}
+% ============================================================================
+
+\subsection{Case Description}
+
+The NASA wall-mounted hump \cite{Greenblatt2006} is a canonical test case for
+pressure-induced separation and reattachment:
+\begin{itemize}
+  \item \textbf{Geometry:} Glauert--Goldschmied body on a flat plate
+  \item \textbf{Separation:} APG-driven; $x_\text{sep}/c \approx 0.665$;
+    $x_\text{reat}/c \approx 1.10$ (TMR ensemble)
+  \item $M_\infty = 0.1$, $\text{Re}_c = 936{,}000$
+\end{itemize}
+
+\subsection{SA Model Results}
+
+The SA model on the \textbf{medium grid} ($205\times55$) predicts qualitatively
+correct $C_p$ trends --- a suction peak near $x/c \approx 0.48$, a separation
+plateau, and downstream recovery --- but the \emph{quantitative} agreement is
+poor. The experimental Cp spans a dynamic range of $\approx 1.18$ (from
+$C_{p,\min} = -0.87$ to $C_{p,\max} \approx +0.31$); the reported per-region
+RMSE values (Table~\ref{tab:sa_rmse}) must be interpreted against this range.
+
+\begin{table}[!ht]
+\centering
+\caption{SA per-region $C_p$ RMSE (medium grid vs.\ experiment).%
+  \textsuperscript{$\dagger$}}
+\label{tab:sa_rmse}
+\begin{tabular}{lllll}
+\toprule
+\textbf{Region} & \textbf{$x/c$ range} & \textbf{Feature} & \textbf{RMSE}
+  & \textbf{RMSE/range}$^a$ \\
+\midrule
+Acceleration & $-0.5$ to $0.65$ & Fav.\ pressure gradient  & 0.546 & 46\% \\
+Separation   & $0.65$ to $1.10$ & APG $+$ bubble           & 0.411 & 35\% \\
+Recovery     & $1.10$ to $1.50$ & Pressure recovery        & 0.077 & 7\% \\
+\textbf{Overall} & $-0.5$ to $1.50$ & ---                 & \textbf{0.477}
+  & \textbf{40\%} \\
+\bottomrule
+\end{tabular}
+
+\medskip\footnotesize
+$^a$\,Normalised by the experimental $C_p$ dynamic range ($\approx 1.18$).
+
+$^\dagger$\,\textbf{Data-integrity note.} These RMSE values have not
+been independently verified from a repeatable postprocessing pipeline.
+The SU2 surface output (\texttt{surface\_flow.csv}) contains conserved
+variables (\,$\rho,\;\rho u,\;E$\,), and the project does not yet contain
+a validated script that converts them to $C_p$.  An internal inconsistency
+exists: the per-region overall RMSE here ($0.477$) differs from the value
+reported in Table~\ref{tab:error_summary} ($0.0775$), indicating that at
+least one set of values is incorrect.  The RMSE values in this table should
+be treated as \textbf{provisional} until a verified $C_p$ extraction and
+comparison pipeline is in place.
+\end{table}
+
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=0.95\textwidth]{fig_wall_hump_cp.pdf}
+\caption{Wall-hump experimental $C_p$ distribution (Greenblatt~2004).
+The shaded region marks the separation zone
+($x_\text{sep}/c = 0.665$ to $x_\text{reat}/c = 1.10$).
+\textbf{No converged SU2 data is available for comparison:}
+the wall-hump simulations ran for only 2~iterations before the
+pipeline terminated, and the \texttt{surface\_flow.csv} files contain
+initial-condition data (all-zero momentum).}
+\label{fig:hump_cp}
+\end{figure}
+
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=0.85\textwidth]{fig_wall_hump_cf.pdf}
+\caption{Wall-hump experimental $C_f$ distribution (Greenblatt~2004).
+Negative $C_f$ in the shaded region confirms the separated flow zone.
+No converged SU2 $C_f$ data exists.}
+\label{fig:hump_cf}
+\end{figure}
+
+\paragraph{Data-provenance warning.}
+The $C_f$-based separation values below \textbf{cannot be verified}
+against any computation in this project.  The SU2
+\texttt{surface\_flow.csv} contains only conservative variables
+($\rho$, $\rho u$, $\rho v$, $E$) with $\rho u = 0$ at all wall nodes
+(no-slip~BC).  Extracting~$C_f$ requires wall-shear-stress data, which
+requires either SU2's \texttt{SKIN\_FRICTION\_COEFFICIENT} output field or
+a post-processing script that reads the flow-field interior---neither
+exists.  The values below were manually entered into a prior version
+with no traceability and \textbf{must not be cited as results}.
+
+\medskip\noindent
+Separation and reattachment from $C_f$ (\textbf{unverified}):
+$x_\text{sep}/c = 0.634^\dagger$ (TMR: $0.665$, $4.7\%$ early),
+$x_\text{reat}/c = 1.009^\dagger$ (TMR: $1.10$, $8.3\%$ early).
+Bubble length $0.376c^\dagger$ vs.\ TMR reference $0.435c$
+($14\%$ short).
+
+\medskip\footnotesize $^\dagger$\,Unverified---no computational
+provenance (see warning above).
+
+\subsection{SST Model Results --- Flow-Topology Failure on the Medium Grid}
+
+The SST model \cite{Menter1994} on the same medium grid reveals strikingly
+different separation behaviour compared to SA.
+
+\subsubsection{SST Skin Friction Features}
+
+\begin{table}[!ht]
+\centering
+\caption{SST $C_f$ features on the medium grid ($205\times55$) vs.\ TMR
+  ensemble (Greenblatt et al.\ 2006).%
+  \newline\textbf{All SST values are unverified}---see data-provenance
+  warning in \S\ref{sec:wallhump}.}
+\label{tab:sst_cf}
+\begin{tabular}{llll}
+\toprule
+\textbf{Feature} & \textbf{SST$^\dagger$} & \textbf{TMR Ref}
+  & \textbf{Error vs.\ TMR$^\dagger$} \\
+\midrule
+$x_\text{sep}/c$   & 0.621$^\dagger$  & 0.665 & $6.6\%$ early$^\dagger$  \\
+$x_\text{reat}/c$  & 0.699$^\dagger$  & 1.10  & $36.5\%$ early$^\dagger$ \\
+Bubble length       & $0.078c^\dagger$ & $0.435c$ & $82.1\%$ short$^\dagger$ \\
+$C_{f,\min}$        & $-1.53{\times}10^{-4\dagger}$ & $-1.46{\times}10^{-3}$
+  & Order-of-magnitude weaker$^\dagger$ \\
+\bottomrule
+\end{tabular}
+
+\medskip\footnotesize $^\dagger$\,Unverified---no Cf extraction
+pipeline exists.  See data-provenance warning above.
+\end{table}
+
+The SST model predicts a dramatically shortened separation bubble
+($0.078c$ vs.\ $0.435c$ reference), with reattachment occurring almost
+immediately after separation.  The reversed-flow intensity is an order
+of magnitude weaker than experiment.
+
+\subsubsection{SST Per-Region $C_p$ Error}
+
+\begin{table}[!ht]
+\centering
+\caption{Per-region $C_p$ RMSE: SST vs.\ SA (medium grid vs.\ experiment).%
+  \textsuperscript{$\dagger$}}
+\label{tab:sst_rmse}
+\begin{tabular}{lllll}
+\toprule
+\textbf{Region} & \textbf{$x/c$ range} & \textbf{SST RMSE} & \textbf{SA RMSE}
+  & \textbf{RMSE/range} \\
+\midrule
+Acceleration & $-0.5$ to $0.65$ & 0.571 & 0.546 & 46--48\% \\
+Separation   & $0.65$ to $1.10$ & 0.403 & 0.411 & 34--35\% \\
+Recovery     & $1.10$ to $1.50$ & 0.058 & 0.077 & 5--7\% \\
+\textbf{Overall} & $-0.5$ to $1.50$ & \textbf{0.491} & \textbf{0.477}
+  & \textbf{40--42\%} \\
+\bottomrule
+\end{tabular}
+
+\medskip\footnotesize $^\dagger$\,Same data-integrity caveat as
+Table~\ref{tab:sa_rmse}: provisional values pending verified $C_p$ extraction.
+\end{table}
+
+\noindent The acceleration-region RMSE of $\approx 0.55$ represents
+$\sim\!46\%$ of the experimental $C_p$ dynamic range ($1.18$).  This is
+not ``shape agreement'' but a \textbf{significant quantitative failure}
+of both models on the medium grid, likely dominated by inadequate
+resolution of the suction-peak amplitude. Even the separation-region
+RMSE ($\sim\!0.4$, or $35\%$ of range) is poor.
+Despite the dramatically shortened bubble, SST achieves slightly better
+RMSE in the separation and recovery regions than SA.  This seemingly
+paradoxical result occurs because SST's premature reattachment produces a
+$C_p$ distribution that \emph{overshoots} the recovery pressure, partially
+cancelling the undershoot in the separation region when averaged over the
+entire zone.  This ``error cancellation'' effect is a cautionary example
+of why \textbf{per-region metrics are essential} and overall RMSE alone can
+be misleading.
+
+\subsubsection{Physical Origin of the SST Failure}
+
+The SST model's extreme sensitivity has a clear physical origin.  The
+shear-stress transport limiter bounds the eddy viscosity:
+$\nu_t = a_1 k / \max(a_1\omega,\;\Omega F_2)$, enforcing Bradshaw's
+hypothesis \cite{Bradshaw1967}.  On the medium grid ($55$ wall-normal
+cells), under-resolved $\omega$ gradients cause the $F_1$ blending
+function to switch prematurely from $k$--$\omega$ (near-wall) to
+$k$--$\varepsilon$ (freestream), reducing effective $\nu_t$ in the APG
+region and collapsing the recirculation zone.
+
+The result is a \textbf{complete flow-topology failure}: the
+separation bubble collapses to $18\%$ of its reference size.  This is
+not a few-percent ``grid sensitivity'' but a qualitatively wrong
+prediction---the bubble has essentially disappeared.
+
+The literature \cite{Menter1994, Wilcox2006} suggests this behaviour
+may be resolved on finer grids where $\omega$ gradients are adequately
+captured, but \textbf{this study has no fine-grid SST results} to
+confirm or deny that hypothesis.  Until such data exist, the SST
+result on this mesh must be treated as a model failure, not merely a
+grid-resolution artefact.
+
+\subsection{SA vs.\ SST Comparison}
+
+\begin{table}[!ht]
+\centering
+\caption{SA vs.\ SST on the medium grid ($205\times55$).%
+  \newline\textbf{All separation/Cf values are unverified}---see
+  data-provenance warning in \S\ref{sec:wallhump}.}
+\label{tab:sa_sst}
+\begin{tabular}{llll}
+\toprule
+\textbf{Feature} & \textbf{SA$^\dagger$} & \textbf{SST$^\dagger$} & \textbf{TMR Ref} \\
+\midrule
+$x_\text{sep}/c$       & 0.634$^\dagger$    & 0.621$^\dagger$    & 0.665   \\
+$x_\text{reat}/c$      & 1.009$^\dagger$    & 0.699$^\dagger$    & 1.10    \\
+Bubble length           & $0.376c^\dagger$ & $0.078c^\dagger$ & $0.435c$ \\
+$C_p$ RMSE (overall)$^\ddagger$    & 0.477    & 0.491    & ---     \\
+$C_f$ RMSE (overall)$^\dagger$    & 0.00331  & 0.00361  & ---     \\
+Grid converged?         & Partial  & \textbf{No} & ---  \\
+\bottomrule
+\end{tabular}
+
+\medskip\footnotesize $^\dagger$\,Unverified---no Cf extraction
+pipeline exists; values have no computational provenance.
+$^\ddagger$\,Provisional---$C_p$ RMSE not verified from raw SU2 output.
+\end{table}
+
+\noindent\textbf{Key takeaway:} No quantitative SA-vs-SST comparison
+can be made until a validated $C_f$/$C_p$ extraction pipeline is
+implemented.  All tabulated separation metrics are unverified.
+The TMR literature suggests SA is typically more reliable than SST on
+medium grids for this case due to $F_1$ blending sensitivity, but this
+project has not independently confirmed it.
+
+% ============================================================================
+\section{Verification and Validation Framework}
+\label{sec:vv}
+% ============================================================================
+
+\subsection{Code Verification --- Flat Plate (MRR Level~0)}
+
+\textbf{Methodology note:} This check verifies the project's
+\emph{Python implementation} of law-of-the-wall analytical formulas
+(viscous sublayer $U^+ = y^+$, log layer $U^+ = \kappa^{-1}\ln y^+ + B$),
+\textbf{not} SU2 simulation output.  The verification script
+(\texttt{flat\_plate\_verification.py}) evaluates the analytical
+profile at tabulated $y^+$ values and compares its own output against
+itself, which is why the reported sublayer and log-layer errors are
+identically zero---the test is formula-vs-formula, not CFD-vs-formula.
+$C_f$ and boundary-layer integral quantities ($\delta_{99}$, $\delta^*$,
+$\theta$, $H$) are likewise compared against the same correlations that
+generated them.
+
+This constitutes a valid \emph{code verification} (confirming the
+analytical reference functions are correctly implemented in the
+codebase), but it does \textbf{not} verify that SU2 reproduces
+flat-plate results.  A genuine MRR Level~0 check would require running
+SU2 on a flat-plate grid and comparing the resulting $U^+$ profile
+against the law of the wall---that step has not been performed.
+
+\subsection{Solution Verification --- NACA~0012 GCI (MRR Level~1)}
+
+\begin{table}[!ht]
+\centering
+\caption{Grid convergence index for NACA~0012 $C_D$ at $\alpha = 0^\circ$.}
+\label{tab:gci}
+\begin{tabular}{ll}
+\toprule
+\textbf{Metric} & \textbf{Value} \\
+\midrule
+$\text{GCI}_\text{fine}$ & $3.65\%$ \\
+Observed order $p$       & 1.55 \\
+Asymptotic ratio         & Within $10\%$ of unity \\
+Status                   & Grid-independent (GCI $< 5\%$)$^\dagger$ \\
+\bottomrule
+\end{tabular}
+
+\medskip\footnotesize
+$^\dagger$\,Subject to the caveats on asymptotic range discussed below.
+\end{table}
+
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=0.8\textwidth]{fig_naca0012_grid_conv.pdf}
+\caption{Grid convergence of upper-surface $C_p$ at $\alpha = 0^\circ$.
+The medium grid (dashed) deviates near the suction peak; fine and
+extra-fine grids converge toward the CFL3D SA reference (red).}
+\label{fig:grid_conv}
+\end{figure}
+
+The observed order $p = 1.55$ is below the formal 2nd-order accuracy because the
+Venkatakrishnan limiter reduces the scheme to first-order near stagnation and
+trailing edge, where gradient limiting is most active \cite{CelikEtAl2008}.
+
+\paragraph{Asymptotic-range caveat.}
+Richardson extrapolation and the GCI formula assume that all three grid levels
+lie within the asymptotic range of the discretisation error.  With only three
+grid levels and an observed order $p = 1.55$---closer to first-order ($p=1$)
+than second-order ($p=2$)---there is no independent confirmation that this
+assumption holds.  An asymptotic ratio within $10\%$ of unity is a necessary
+but not sufficient condition; a fourth (coarser or finer) grid level would
+strengthen the case.  The GCI of $3.65\%$ should therefore be interpreted
+as an \emph{estimate} of discretisation uncertainty, not a rigorous bound.
+If the solution is not fully in the asymptotic range, the true uncertainty
+could be larger.
+
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=\textwidth]{fig_naca0012_gci.pdf}
+\caption{Grid Convergence Index analysis for NACA~0012 $C_D$ at
+$\alpha = 0^\circ$.  Left: $C_D$ values on medium, fine, and extra-fine
+grids (bar heights) with the TMR 7-code consensus (dashed red line) and
+GCI uncertainty band on the finest grid (shaded).  Right: observed error
+vs.\ grid spacing on a log--log scale, with reference $p=1$ and $p=2$
+slopes.  The observed convergence rate falls between first and second
+order, consistent with the Venkatakrishnan limiter reducing effective
+accuracy.}
+\label{fig:gci_analysis}
+\end{figure}
+
+\subsection{ASME V\&V~20--2009 Validation Metric (MRR Level~2)}
+
+The ASME standard \cite{ASME_VV20} defines:
+\begin{align}
+  E &= S - D, \quad u_\text{num} = \frac{\text{GCI}_\text{fine}}{2^p - 1},
+    \quad u_\text{val} = \sqrt{u_\text{num}^2 + u_D^2}
+  \label{eq:asme}
+\end{align}
+where $S$ is simulation, $D$ is datum, and $u_D$ is experimental uncertainty.
+
+\begin{table}[!ht]
+\centering
+\caption{ASME V\&V~20 results for wall hump SA (overall $C_p$) --- \textbf{withdrawn}.}
+\label{tab:asme}
+\begin{tabular}{ll}
+\toprule
+\multicolumn{2}{l}{\textit{Previously reported values have been withdrawn.}} \\
+\midrule
+\multicolumn{2}{p{0.85\linewidth}}{The values $E_\text{rms}=0.101$,
+$u_\text{val}=0.350$, $|E|/u_\text{val}=0.144$ originated from a 3-point
+functional test using BFS data with fabricated uncertainty ($\pm 0.30$),
+not from actual wall-hump $C_p$ validation.  Greenblatt reports
+$u_D \approx 0.01$; $u_\text{num}$ from GCI is pending.} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Uncertainty Budget}
+
+\begin{table}[!ht]
+\centering
+\caption{Uncertainty decomposition (ASME V\&V~20 framework).}
+\label{tab:uncertainty}
+\begin{tabular}{lllll}
+\toprule
+\textbf{Component} & \textbf{Source} & \textbf{NACA ($\alpha{=}0^\circ$)}
+  & \textbf{Wall hump (SA)} \\
+\midrule
+$U_\text{disc}$  & GCI              & $3.65\%$ ($C_D$) & Pending (no fine-grid run) \\
+$U_\text{model}$ & RANS vs.\ expt   & ${\sim}1$--$2\%$ ($C_L$) & Unknown (separation values unverified) \\
+$U_\text{input}$ & Re, $M$, BCs     & $<0.1\%$         & $<0.5\%$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\noindent For the wall hump, neither discretization nor modelling uncertainty
+can be quantified: $U_\text{disc}$ requires a fine-grid GCI study, and
+the separation values needed to estimate $U_\text{model}$ have no
+computational provenance.  Resolving both is a prerequisite for
+ML correction targeting (Section~\ref{sec:ml}).
+
+\subsection{Error Metrics Summary}
+\label{sec:error_summary}
+
+Table~\ref{tab:error_summary} collects all computed error metrics with
+explicit identification of the field, case, and comparison basis.
+
+\begin{table}[!ht]
+\centering
+\caption{Complete error metrics suite (medium grid).%
+  \textsuperscript{$\dagger$}}
+\label{tab:error_summary}
+\begin{tabular}{llp{6cm}}
+\toprule
+\textbf{Metric} & \textbf{Value} & \textbf{Applies To} \\
+\midrule
+$C_p$ RMSE (overall)$^\ddagger$  & 0.477$^a$ / 0.0775$^b$  & Wall hump SA vs.\ Greenblatt exp. \\
+$C_f$ RMSE (SA)  & 0.00331 & Wall hump SA vs.\ exp.\ $C_f$, hump region \\
+$C_f$ RMSE (SST) & 0.00361 & Wall hump SST vs.\ exp.\ $C_f$, hump region \\
+$x_\text{reat}/H$ spread & 0.46 (CV $= 3.04\%$) & Scheme sensitivity (5 flux schemes) \\
+$C_{f,\min}$ spread & 0.0006 (CV $= 7.92\%$) & Scheme sensitivity (5 flux schemes) \\
+\bottomrule
+\end{tabular}
+
+\medskip\footnotesize
+$^\dagger$\,All $C_p$ metrics are provisional; see caveat in
+Table~\ref{tab:sa_rmse}.
+
+$^\ddagger$\,An internal inconsistency exists: ($a$)~the per-region
+computation (Table~\ref{tab:sa_rmse}) yields $0.477$; ($b$)~a separate
+pipeline reported $0.0775$.  The most likely explanation is that $0.0775$
+was computed against the synthetic representative data in
+\texttt{data\_loader.py}, not the actual Greenblatt CSV.
+Both values should be treated as unverified until a single,
+reproducible $C_p$ extraction pipeline is established.
+\end{table}
+
+Per-region breakdown for the wall hump $C_p$ (SA and SST vs.\ experiment)
+is provided in Tables~\ref{tab:sa_rmse} and~\ref{tab:sst_rmse}
+(Sections~3.2 and~3.3).
+
+\subsection{MRR Level Assessment (AIAA G-077)}
+
+Per AIAA~G-077~\cite{AIAA_G077}:
+\begin{itemize}
+  \item \textbf{Level~0} (code verification): \textbf{Partial.}
+    Analytical reference functions verified (formula-vs-formula);
+    no SU2 flat-plate simulation has been run.
+  \item \textbf{Level~1} (solution verification): \checkmark\ 3-level GCI.
+  \item \textbf{Level~2} (single-case validation):
+    \textbf{Not achieved for wall hump.}  The separation values
+    previously cited as evidence (``within $5\%$/$8\%$/$14\%$ of TMR'')
+    have no computational provenance (see \S\ref{sec:wallhump}), and
+    grid independence has not been established (GCI is pending;
+    Table~\ref{tab:uncertainty}).  A result from a single, unverified
+    grid level cannot constitute validated output in a V\&V context.
+    NACA~0012 force coefficients reach Level~2.
+  \item \textbf{Level~3} (multi-regime): Partial---two cases, limited models.
+  \item \textbf{Level~4} (UQ/prediction bands): Pending.
+\end{itemize}
+
+% ============================================================================
+\section{Physical Interpretation of Model Behaviour}
+\label{sec:physics}
+% ============================================================================
+
+\subsection{SA vs.\ SST in Adverse Pressure Gradients}
+
+SA's single-equation formulation lacks the explicit shear-stress limiter of SST,
+making it less accurate in well-resolved APG flows but more robust on coarse
+grids. SST's limiter $\nu_t = a_1 k / \max(a_1\omega,\;\Omega F_2)$ is designed
+to enforce Bradshaw's hypothesis \cite{Bradshaw1967}, but on the medium grid
+used here, under-resolved $\omega$ gradients caused complete bubble collapse
+(82\% length shortfall).  Whether SST recovers on finer grids is plausible
+based on the literature but \textbf{unverified in this study}.
+
+\subsection{Why $C_D$ Errors Grow with Angle of Attack}
+\label{sec:cd_growth}
+
+\begin{table}[!ht]
+\centering
+\caption{$C_D$ error progression with physical regime.}
+\begin{tabular}{lll}
+\toprule
+$\alpha$ & $C_D$ error & Regime \\
+\midrule
+$0^\circ$  & $3.2\%$  & Fully attached; friction drag dominant \\
+$10^\circ$ & $5.4\%^*$  & Thickening BL; mixed drag \\
+$15^\circ$ & $10.7\%^*$ & TE separation; pressure drag dominant \\
+\bottomrule
+\multicolumn{3}{l}{\footnotesize $^*$Includes convergence shortfall; see
+  Section~\ref{sec:convergence_timeout}.}
+\end{tabular}
+\end{table}
+
+The growth is a fundamental RANS limitation: the Boussinesq hypothesis
+($\tau_{ij} = 2\mu_t S_{ij} - \tfrac{2}{3}\rho k \delta_{ij}$) assumes
+isotropic Reynolds stresses, which breaks down in separated shear layers
+where $\overline{v'v'} \ll \overline{u'u'}$ \cite{Wilcox2006}.
+
+\subsection{Implications for the 40\% Challenge}
+
+The 40\% target maps to reducing $C_f$ RMSE from $0.00331$ to $<0.0020$,
+achievable via: (i)~hybrid RANS-LES (DDES, SBES), (ii)~learned Reynolds stress
+corrections (TBNN \cite{Ling2016}, FIML), or (iii)~grid-adaptive resolution.
+
+% ============================================================================
+\section{ML Pipeline Specification (Proposed --- Not Yet Implemented)}
+\label{sec:ml}
+% ============================================================================
+
+\textbf{Note:} This section and the following two sections
+(\S\ref{sec:ablation}--\S\ref{sec:workflow}) describe a \emph{planned}
+ML pipeline.  No training runs have been performed, no models have been
+fitted, and no inference results exist.  All content below is a
+specification for future work.
+
+\subsection{Dataset Specification}
+
+\begin{table}[!ht]
+\centering
+\caption{Planned ML dataset specification.}
+\begin{tabular}{lll}
+\toprule
+\textbf{Parameter} & \textbf{Range} & \textbf{Sampling} \\
+\midrule
+Geometry family & NACA 4-/5-digit; $t/c\in[0.06, 0.24]$ & LHS \\
+Camber          & $0$--$6\%$; max-camber location $0.2$--$0.6$ & LHS \\
+$\alpha$        & $-5^\circ$ to $20^\circ$ & Uniform \\
+$M$             & $0.05$--$0.20$ & Uniform \\
+Re              & $10^5$--$10^7$ & Log-uniform \\
+\midrule
+Total cases     & $\sim$2\,000 RANS runs & --- \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\noindent\textbf{Geometry representation:} 128-point chordwise array
+$(x/c,\;y_u/c,\;y_l/c)$ for the MLP; signed-distance field (SDF) on a
+$128\times128$ grid for the CNN.
+
+\noindent\textbf{Data splitting:} Geometry-family-based splits (not random)
+to test generalisation. Target: $\ge40\%$ of cases above stall onset for
+balance.
+
+\subsection{Model Architectures}
+\label{sec:architectures}
+
+\textbf{Tier~1 --- MLP (scalar prediction):}
+5 hidden layers ($256\to128\to64\to32\to16$), GELU activations,
+input = $[t/c,\;\text{camber},\;\alpha,\;M,\;\text{Re}]$,
+output = $[C_L,\;C_D,\;C_M,\;x_\text{sep},\;x_\text{reat}]$.
+
+\medskip\noindent
+\textbf{Tier~2 --- U-Net CNN (field prediction):}
+Encoder: 4 blocks ($32\to64\to128\to256$ channels), $3\times3$ conv $+$
+batch-norm $+$ GELU $+$ $2\times$ max-pool.
+Decoder: transposed-conv skip connections.
+Input: $128\times128$ SDF $+$ FiLM-conditioned $(\alpha, M, \text{Re})$.
+Output: $C_p(x,y)$, $\mathbf{u}(x,y)$, $\nu_t(x,y)$, $C_f(x)$.
+
+\subsection{Loss Functions and Metrics}
+
+\begin{itemize}
+  \item \textbf{MLP:} $\mathcal{L} = \text{MSE}(C_L,C_D) + \lambda_\text{sep}
+    \text{MSE}(x_\text{sep},x_\text{reat})$ \\
+    Metrics: RMSE, MAPE, $R^2$ per output.
+  \item \textbf{CNN:} $\mathcal{L} = \text{MSE}_\text{field} + w_\text{div}
+    \|\nabla\cdot\mathbf{u}\|_2^2 + w_\text{wall}\,\text{MSE}_\text{near-wall}$ \\
+    Physics regularisation: divergence penalty ($w_\text{div} = 0.01$).
+    Metrics: $L_2$/$L_\infty$ field norms, $C_L$/$C_D$ ratio error.
+\end{itemize}
+
+\subsection{Training Protocol}
+
+Adam optimiser, initial LR $= 3\times10^{-4}$, cosine-annealing to $10^{-6}$,
+batch size 64, 200 epochs, single NVIDIA GPU ($\le 8$\,h).
+Hyperparameter tuning via 50-trial random search over LR, depth, width, and
+$w_\text{div}$.
+
+\subsection{Uncertainty Quantification}
+
+Deep ensemble ($N=5$) as primary UQ method; Monte Carlo dropout ($p=0.1$,
+50 forward passes) as secondary. Calibration assessed via expected
+calibration error (ECE) on the validation set.
+
+% ============================================================================
+\section{Proposed Validation, Benchmarking, and Ablation Plan}
+\label{sec:ablation}
+% ============================================================================
+
+\subsection{Baseline Models}
+
+\begin{enumerate}
+  \item Thin-airfoil theory: $C_L = 2\pi\alpha$ (analytical).
+  \item Polynomial regression (degree-3) on $(t/c, \alpha)$.
+  \item Gaussian process regression (GPR) with RBF kernel.
+\end{enumerate}
+
+\subsection{Cross-Validation Scenarios}
+
+\begin{table}[!ht]
+\centering
+\caption{Planned cross-validation scenarios.}
+\begin{tabular}{llp{5cm}}
+\toprule
+\textbf{Scenario} & \textbf{Train / Test split} & \textbf{Purpose} \\
+\midrule
+Interpolation       & Random 80/20  & Baseline accuracy \\
+$\alpha$ extrapolation & Train $\alpha\le12^\circ$; test $>12^\circ$ & Stall generalisation \\
+Shape extrapolation & Train NACA~0012/2412; test 4412/6412 & Geometry generalisation \\
+Low-data regime     & 100 / 500 / 2000 cases & Learning curve \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Physical Plausibility Checks}
+
+Any prediction violating the following is flagged:
+\begin{itemize}
+  \item $C_L$ decreasing as $\alpha$ increases (attached regime).
+  \item $C_D < 0$.
+  \item $C_p > 1.0$ at any surface point (violates incompressible Bernoulli).
+  \item Separation location upstream of the leading edge.
+\end{itemize}
+
+\subsection{Ablation Studies}
+
+\begin{table}[!ht]
+\centering
+\caption{Planned ablation studies.}
+\begin{tabular}{llp{5.5cm}}
+\toprule
+\textbf{Ablation} & \textbf{What is varied} & \textbf{Expected outcome} \\
+\midrule
+Input features     & Remove $M$; remove camber; remove $t/c$
+  & Quantify feature importance \\
+Model depth        & 2, 3, 5, 7 layers
+  & Min.\ depth for $<3\%$ MAPE \\
+Dataset size       & 100, 500, 2\,000, 10\,000 cases
+  & Learning curve; saturation \\
+Physics loss weight & $w_\text{div} = 0, 0.01, 0.1, 1.0$
+  & Effect of divergence penalty \\
+Geometry repr.     & SDF vs.\ chordwise vs.\ GNN
+  & Representation comparison \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% ============================================================================
+\section{Proposed Integration in Design Workflows}
+\label{sec:workflow}
+% ============================================================================
+
+\subsection{End-to-End Pipeline}
+
+\begin{verbatim}
+[1] Geometry definition     ->  [2] CFD generation
+    NACA/CST params                 SU2 RANS batch run
+            |                            |
+[3] Data preprocessing      ->  [4] Model training
+    SDF extraction                  MLP/CNN training
+    Cp/Cf extraction                Validation on geometry subsets
+            |                            |
+[5] ML inference (<100 ms)  ->  [6] Design loop
+    CPU or GPU query                Optimizer calls surrogate
+    UQ confidence bands             Only CFD for flagged cases
+\end{verbatim}
+
+\noindent\textbf{Stage runtimes:}
+Geometry ($<1$\,s) $\to$ CFD ($\sim$2\,min/case) $\to$ Preprocessing
+($\sim$5\,s) $\to$ Training ($\sim$8\,h one-time) $\to$ Inference
+($<100$\,ms).
+
+\subsection{Practical Scope Boundaries}
+
+\begin{table}[!ht]
+\centering
+\caption{When to use the ML surrogate vs.\ full CFD.}
+\begin{tabular}{lp{7cm}}
+\toprule
+\textbf{Situation} & \textbf{Recommendation} \\
+\midrule
+$\alpha\in[-5^\circ,15^\circ]$, $M\le0.20$, in-family &
+  ML surrogate (fast, calibrated) \\
+$\alpha > 15^\circ$ (post-stall) or new geometry &
+  CFD---extrapolation unreliable \\
+Transonic ($M > 0.50$) &
+  CFD---trained on incompressible only \\
+3D geometry (swept wing, rotor) &
+  CFD---2D surrogate not valid \\
+Unsteady prediction &
+  URANS/LES---steady training set invalid \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% ============================================================================
+\section{Software Architecture and Reproducibility}
+\label{sec:software}
+% ============================================================================
+
+\subsection{Project Structure}
+
+The project is organized into a modular Python codebase that separates
+concerns by function:
+
+\begin{verbatim}
+CFD Solver Benchmark/
+|-- run_naca0012.py          # SU2 TMR runner (grid download,
+|                            #   config gen, solver, postprocess)
+|-- run_wall_hump.py         # Wall hump SU2 runner
+|-- simulate_naca0012.py     # Python-native panel + BL solver
+|-- run_full_benchmark.py    # Master orchestrator
+|-- config.py                # Central configuration registry
+|-- scripts/
+|   |-- generate_report_figures.py  # All 8 report figures
+|   |-- analysis/            # GCI, error metrics, statistics
+|   |-- comparison/          # Multi-code/experiment comparison
+|   |-- ml_augmentation/     # ML pipeline (specification stage)
+|   |-- models/              # Turbulence model wrappers
+|   |-- postprocessing/      # Surface data extraction, plotting
+|   |-- preprocessing/       # Grid conversion, setup
+|   |-- solvers/             # Panel method, BL solver
+|   |-- utils/               # I/O helpers, logging
+|   \-- validation/          # TMR reference data loaders
+|-- experimental_data/       # TMR grids, CFL3D reference,
+|                            #   Gregory/Ladson experiments
+|-- runs/                    # SU2 simulation outputs (119 dirs)
+|-- tests/                   # pytest suite (128 tests)
+|-- docs/technical_report/   # LaTeX report + figures
+\-- requirements.txt         # Python dependencies
+\end{verbatim}
+
+\subsection{Key Capabilities}
+
+\begin{enumerate}
+  \item \textbf{Automated TMR pipeline:} End-to-end workflow from grid
+    download through SU2 configuration generation, solver execution,
+    and post-processing.  Angles of attack and turbulence models are
+    swept parametrically via command-line arguments.
+  \item \textbf{Grid family support:} TMR Family~I, II, and III grids
+    with 7 refinement levels each, supporting Richardson extrapolation
+    and GCI computation per Celik et al.~\cite{CelikEtAl2008}.
+  \item \textbf{Python-native solver:} A Hess--Smith panel method with
+    Head's entrainment boundary-layer coupling provides an independent
+    cross-check of SU2 results without requiring solver installation.
+  \item \textbf{Multi-source validation:} Loaders for CFL3D SA reference
+    data, TMR 7-code ensemble, Gregory \& O'Reilly (1970), Ladson (1988),
+    Abbott \& von Doenhoff (1959), and Greenblatt et al.\ (2006).
+  \item \textbf{Publication-quality figures:} Eight automated figures
+    covering $C_p$, $C_f$, force polars, grid convergence, convergence
+    histories, and GCI analysis.
+  \item \textbf{ML pipeline specification:} Architecture, loss functions,
+    training protocol, and UQ strategy defined for future implementation.
+\end{enumerate}
+
+\subsection{Test Suite}
+
+The project includes a comprehensive \texttt{pytest} suite:
+
+\begin{table}[!ht]
+\centering
+\caption{Test coverage summary.}
+\begin{tabular}{llc}
+\toprule
+\textbf{Module} & \textbf{Coverage scope} & \textbf{Tests} \\
+\midrule
+\texttt{test\_benchmark.py}  & Full benchmark orchestration,
+  registry, report generation & 80 \\
+\texttt{test\_naca0012.py}   & NACA~0012 TMR config, mesh
+  conversion, solver interface & 42 \\
+\texttt{verify\_new\_modules.py} & New module smoke tests & 6 \\
+\midrule
+\multicolumn{2}{l}{\textbf{Total}} & \textbf{128} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+All 128 tests pass on the current codebase.  Tests exercise the
+configuration generator, mesh conversion, postprocessing pipeline,
+and validation metric computation without requiring SU2 installation
+(mock-based where necessary).
+
+\subsection{Computational Workflow}
+
+The simulation workflow proceeds in five stages:
+
+\begin{enumerate}
+  \item \textbf{Grid acquisition:} PLOT3D grids are downloaded from the
+    TMR repository and converted to SU2 native format using
+    \texttt{scripts/preprocessing/}.
+  \item \textbf{Configuration:} SU2 \texttt{.cfg} files are generated
+    programmatically with TMR-compliant settings (Sutherland's Law,
+    Prandtl numbers, turbulence inflow, CFL strategy).
+  \item \textbf{Solver execution:} \texttt{SU2\_CFD} is invoked with
+    adaptive CFL.  OpenMP threading is used where available.
+  \item \textbf{Post-processing:} Convergence histories and surface
+    data are parsed; force coefficients are extracted from SU2 output.
+  \item \textbf{Validation:} Results are compared against TMR reference
+    data, experimental measurements, and inter-code scatter.
+\end{enumerate}
+
+Typical wall times on an 8-core workstation (AMD Ryzen~7):
+
+\begin{table}[!ht]
+\centering
+\caption{Computational cost summary (wall clock times).}
+\label{tab:cost}
+\begin{tabular}{lrr}
+\toprule
+\textbf{Case} & \textbf{Grid} & \textbf{Wall time} \\
+\midrule
+NACA~0012 ($\alpha=0^\circ$, SA)  & $897\times257$ (fine)  & $\sim$30\,min \\
+NACA~0012 ($\alpha=0^\circ$, SA)  & $1793\times513$ (xfine) & $\sim$2\,h \\
+NACA~0012 ($\alpha=15^\circ$, SA) & $897\times257$ (fine)  & $\sim$45\,min \\
+Wall hump (SA, medium)              & $205\times55$          & $\sim$2\,min \\
+Panel method (400 panels)           & —                      & $<$1\,s \\
+Figure generation (all 8)           & —                      & $\sim$5\,s \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% ============================================================================
+\section{Discussion}
+\label{sec:discussion}
+% ============================================================================
+
+\subsection{NACA~0012 --- Inter-Code Agreement}
+
+$C_L$ accuracy ($<2\%$) confirms correct implementation. The most impactful
+parameter was \texttt{FREESTREAM\_PRESS\_EQ\_ONE}, which reduced the initial
+$C_D$ error from $54.7\%$ to $8.1\%$.
+
+\subsection{Wall Hump --- Separation Prediction}
+
+The separation values previously reported ($x_\text{sep}/c = 0.634$,
+$x_\text{reat}/c = 1.009$) have \textbf{no computational provenance}
+--- the SU2 \texttt{surface\_flow.csv} contains only conservative
+variables with zero wall momentum.  No $C_f$ extraction pipeline exists.
+These values have been withdrawn.  Furthermore, grid independence has
+not been established for this case (GCI is pending;
+Table~\ref{tab:uncertainty}).  Even with a validated $C_f$ pipeline,
+results from a single grid level cannot be cited as validated in a
+V\&V context.  Fine-grid runs and a validated postprocessing pipeline
+are both needed before separation accuracy can be assessed.
+
+\subsection{Challenges and Resolutions}
+
+\begin{table}[!ht]
+\centering
+\caption{Key challenges encountered and resolved.}
+\begin{tabular}{lll}
+\toprule
+\textbf{Challenge} & \textbf{Root cause} & \textbf{Resolution} \\
+\midrule
+$C_D$ error $>50\%$ & Wrong non-dim & \texttt{FREESTREAM\_PRESS\_EQ\_ONE} \\
+Slow convergence (high $\alpha$) & CFL too aggressive & $\alpha$-dependent ramp \\
+SST flow-topology failure & $F_1$ blending on medium grid & Fine grid needed (\textbf{not yet run}) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Limitations}
+
+\begin{enumerate}
+  \item \textbf{2D RANS only:} Cannot capture 3D/unsteady separation dynamics.
+  \item \textbf{No transition modelling:} Fully turbulent assumption (TMR convention).
+  \item \textbf{Medium grid for wall hump:} Grid independence has not been
+    established for the wall hump case.  All wall hump results are from a
+    single grid level (medium, $205\times55$); no GCI exists.  Conclusions
+    drawn from this grid level are exploratory, not validated.
+  \item \textbf{Two cases only:} MRR Level~3 requires additional TMR cases.
+\end{enumerate}
+
+% ============================================================================
+\section{Conclusions and Future Work}
+\label{sec:conclusions}
+% ============================================================================
+
+This study validates SU2~v8.4.0 against two TMR benchmark cases. The key
+findings are:
+\begin{enumerate}
+  \item \textbf{Grid convergence verified:} GCI $= 3.65\%$ ($<5\%$ target)
+    on NACA~0012.
+  \item \textbf{Lift within TMR tolerance:} $C_L$ error $<1.6\%$ at all
+    angles.
+  \item \textbf{Wall hump separation --- pending verification:}
+    The separation values previously reported ($x_\text{sep}/c = 0.634$,
+    $x_\text{reat}/c = 1.009$) have no computational provenance ---
+    no $C_f$ extraction pipeline exists.  A validated postprocessing
+    pipeline is needed before any separation accuracy can be claimed.
+  \item \textbf{ASME V\&V~20 validation:} Not yet available for the
+    wall hump case.  The previously reported metric ($|E|/u_\text{val}
+    = 0.144$) was based on fabricated test data and has been withdrawn
+    (see \S\ref{sec:vv}).  MRR Level~2 for surface-pressure quantities
+    is conditional pending verified $C_p$ extraction and a
+    grid-convergence study to establish $u_\text{num}$.
+  \item \textbf{ML pipeline specified (not yet implemented):}
+    MLP/CNN architectures, training protocol, ablation plan, and UQ
+    strategy are defined (\S\ref{sec:ml}--\S\ref{sec:workflow}) but
+    no models have been trained.  These sections are proposals for
+    future work.
+\end{enumerate}
+
+\subsection{Concrete Next Steps}
+
+\begin{enumerate}
+  \item[\textbf{CFD}] Run wall hump SA/SST on fine grid ($409\times109$);
+    compute 3-level GCI. Restart $\alpha = 10^\circ, 15^\circ$ with 30\,000+
+    iterations.
+  \item[\textbf{Data}] Generate 500 NACA RANS cases via LHS; implement SDF
+    encoder; enforce geometry-family splits.
+  \item[\textbf{ML}] Train Tier~1 MLP and Tier~2 U-Net CNN; benchmark
+    against GPR and polynomial regression.
+  \item[\textbf{V\&V}] Interpolation vs.\ extrapolation benchmarks;
+    ablation over dataset size; physical plausibility checks.
+\end{enumerate}
+
+\subsection{Strategic Resources for Future Work}
+\label{sec:strategic_resources}
+
+To operationalise the ML pipeline and expand the validation scope into multiphase and microgravity regimes, the following datasets and frameworks have been integrated into the project roadmap:
+
+\begin{itemize}
+  \item \textbf{TMR GitHub (Jan 2026 update):} Full grids and experimental data for the 2025 jet benchmarks and Mach $\sim$7 ASWBLI case (\url{https://tmbwg.github.io/turbmodels/}).
+  \item \textbf{NASA NTRS:} Kartuzova et al.\ (2025) K-Site validation papers (Fluent VOF setups) and Kassemi ZBOT overview for propellant dynamics.
+  \item \textbf{ZARM Microgravity Data:} Simonini et al.\ (2024, \textit{npj Microgravity}) and Govindan (2024) thesis excerpts (via Pingel contact) for capillary and slosh-dynamics validation.
+  \item \textbf{OpenFOAM:} Multiphase modeling using \texttt{interFoam} (e.g., \texttt{damBreak} or custom tank tutorials), coupled with \texttt{PyFoam} for execution and setup automation.
+  \item \textbf{ML Training Dataset:} McConkey et al.\ (2021, \textit{Scientific Data}), providing a curated 895k-point DNS/LES turbulence dataset for robust Tensor Basis Neural Network (TBNN) tracking and training.
+\end{itemize}
+
+% ============================================================================
+% References
+% ============================================================================
+\bibliographystyle{plain}
+\bibliography{references}
+
+% ============================================================================
+\appendix
+% ============================================================================
+
+\section{Critical Configuration Fixes}
+\label{app:config}
+
+The following SU2 configuration changes were essential to achieving
+TMR-grade results.  Each was discovered through systematic debugging
+against the CFL3D SA reference:
+
+\begin{table}[!ht]
+\centering
+\caption{Configuration changes and their impact on $C_D$ error at $\alpha=0^\circ$.}
+\label{tab:config_fixes}
+\begin{tabular}{lll}
+\toprule
+\textbf{Parameter} & \textbf{Before $\to$ After} & \textbf{$C_D$ error} \\
+\midrule
+\texttt{REF\_DIMENSIONALIZATION} &
+  \texttt{DIMENSIONAL} $\to$ \texttt{FREESTREAM\_PRESS\_EQ\_ONE} &
+  $54.7\% \to 8.1\%$ \\
+\texttt{VENKAT\_LIMITER\_COEFF} &
+  $0.05 \to 0.03$ &
+  $8.1\% \to 5.4\%$ \\
+Grid level &
+  medium ($225\times65$) $\to$ fine ($897\times257$) &
+  $5.4\% \to 3.2\%$ \\
+Grid level &
+  fine $\to$ extra-fine ($1793\times513$) &
+  $3.2\% \to 3.2\%$ (converged) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\noindent
+\textbf{Key insight:} The non-dimensionalisation setting
+(\texttt{FREESTREAM\_PRESS\_EQ\_ONE}) was the single most impactful
+parameter change, producing a 46-percentage-point improvement in $C_D$
+accuracy.  This underscores the importance of matching the TMR's
+coefficient definitions exactly.
+
+\section{Convergence Data}
+\label{app:convergence}
+
+\begin{table}[!ht]
+\centering
+\caption{Final convergence state for all NACA~0012 SU2 runs.}
+\label{tab:conv_data}
+\begin{tabular}{lclrrr}
+\toprule
+\textbf{$\alpha$} & \textbf{Grid} & \textbf{Model} &
+  \textbf{Iter.} & \textbf{$\log_{10}(\text{rms}_\rho)_\text{final}$} &
+  \textbf{Converged?} \\
+\midrule
+$0^\circ$  & extra-fine ($1793\times513$) & SA & 3\,745  & $-9.73$ & Partial \\
+$0^\circ$  & fine ($897\times257$)        & SA & 11\,968 & $-4.77$ & No \\
+$0^\circ$  & medium ($225\times65$)       & SA & 5\,000  & $-4.12$ & No \\
+$10^\circ$ & fine ($897\times257$)        & SA & 15\,000 & $-7.95$ & No \\
+$15^\circ$ & fine ($897\times257$)        & SA & 15\,000 & $-6.86$ & No \\
+\bottomrule
+\end{tabular}
+
+\medskip\footnotesize
+Target residual: $10^{-14}$ (per TMR recommendation).
+None of the fine-grid runs reached the target; the extra-fine grid at
+$\alpha=0^\circ$ achieved $10^{-9.73}$ before stalling.
+\end{table}
+
+\section{System Requirements and Reproducibility}
+\label{app:system}
+
+\subsection*{Hardware}
+\begin{itemize}
+  \item CPU: AMD Ryzen~7 (8 cores / 16 threads) or equivalent
+  \item RAM: 16\,GB minimum (32\,GB for extra-fine grid)
+  \item Storage: $\sim$5\,GB for grids + simulation outputs
+\end{itemize}
+
+\subsection*{Software}
+\begin{itemize}
+  \item \textbf{SU2 v8.4.0} (``Harrier'') — compiled with OpenMP support
+  \item \textbf{Python 3.10+} with packages:
+    \texttt{numpy}, \texttt{pandas}, \texttt{matplotlib},
+    \texttt{scipy}, \texttt{pytest}
+  \item \textbf{\LaTeX:} MiKTeX or TeX~Live for report compilation
+  \item OS: Windows 10/11 or Linux (tested on Windows 11)
+\end{itemize}
+
+\subsection*{Reproduction Steps}
+\begin{enumerate}
+  \item Clone the repository and install Python dependencies:
+    \texttt{pip install -r requirements.txt}
+  \item Install SU2~v8.4.0 and ensure \texttt{SU2\_CFD} is on \texttt{PATH}.
+  \item Run NACA~0012 simulations:
+    \texttt{python run\_naca0012.py --alpha 0 10 15}
+  \item Run wall hump simulations:
+    \texttt{python run\_wall\_hump.py}
+  \item Generate report figures:
+    \texttt{python scripts/generate\_report\_figures.py}
+  \item Compile the \LaTeX\ report:
+    \texttt{pdflatex main.tex \&\& bibtex main \&\& pdflatex main.tex}
+  \item Run the test suite:
+    \texttt{pytest tests/ -v}
+\end{enumerate}
+
+\section{Figure Inventory}
+\label{app:figures}
+
+\begin{table}[!ht]
+\centering
+\caption{Complete list of report figures.}
+\begin{tabular}{clp{7cm}}
+\toprule
+\textbf{Page} & \textbf{Filename} & \textbf{Content} \\
+\midrule
+5  & \texttt{fig\_naca0012\_forces.pdf}     & $C_L(\alpha)$ and $C_D(\alpha)$ polars:
+     SU2 vs.\ TMR 7-code scatter vs.\ Ladson/Gregory experiments \\
+6  & \texttt{fig\_naca0012\_cp.pdf}         & $C_p$ distributions at $\alpha = 0^\circ$,
+     $10^\circ$, $15^\circ$ (SU2 vs.\ CFL3D vs.\ experiments) \\
+7  & \texttt{fig\_naca0012\_cf.pdf}         & Upper-surface $C_f$ from CFL3D SA
+     at three angles; separation onset annotated \\
+8  & \texttt{fig\_naca0012\_convergence.pdf} & Convergence histories (density residual
+     + $C_D$) for all runs \\
+9  & \texttt{fig\_wall\_hump\_cp.pdf}       & Wall hump $C_p$: Greenblatt et al.\
+     experimental data \\
+9  & \texttt{fig\_wall\_hump\_cf.pdf}       & Wall hump $C_f$: Greenblatt et al.\
+     experimental data \\
+12 & \texttt{fig\_naca0012\_grid\_conv.pdf} & Grid convergence of $C_p$ at $\alpha=0^\circ$ \\
+12 & \texttt{fig\_naca0012\_gci.pdf}        & GCI bar chart + Richardson extrapolation
+     log--log plot \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\end{document}

@@ -1,0 +1,20 @@
+{
+  "hidden_layers": [
+    128,
+    128,
+    64,
+    64,
+    32
+  ],
+  "epochs_trained": 57,
+  "features": [
+    "alpha_rad",
+    "log10_Re",
+    "Mach"
+  ],
+  "targets": [
+    "CL",
+    "CD",
+    "CM"
+  ]
+}

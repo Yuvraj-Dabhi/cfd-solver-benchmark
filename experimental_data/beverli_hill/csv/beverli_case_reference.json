@@ -1,0 +1,107 @@
+{
+  "case": "BeVERLI Hill \u2014 VT-NASA 3D Smooth-Body Separation",
+  "website": "https://beverlihill.aoe.vt.edu/",
+  "geometry": {
+    "type": "3D superelliptic smooth-body hill",
+    "hill_height_m": 0.186944,
+    "hill_width_m": 0.93472,
+    "flat_top_width_m": 0.093472,
+    "aspect_ratio_w_H": 5.0,
+    "centerline_profile": "5th-degree polynomial (Hermite smoothstep)",
+    "cross_section": "Superelliptic (n \u2248 4)",
+    "hill_extent_xH": [
+      -2.5,
+      2.5
+    ],
+    "tangent_to_wall": true
+  },
+  "flow_conditions": {
+    "Re_250k": {
+      "reynolds": 250000,
+      "mach": 0.06,
+      "velocity_freestream": 20.0,
+      "temperature": 293.15,
+      "pressure": 101325.0,
+      "description": "Low-Re case: attached boundary layer transitions, moderate leeward separation"
+    },
+    "Re_400k": {
+      "reynolds": 400000,
+      "mach": 0.07,
+      "velocity_freestream": 24.0,
+      "temperature": 293.15,
+      "pressure": 101325.0,
+      "description": "Mid-Re case: intermediate between low-Re and high-Re"
+    },
+    "Re_650k": {
+      "reynolds": 650000,
+      "mach": 0.09,
+      "velocity_freestream": 31.0,
+      "temperature": 293.15,
+      "pressure": 101325.0,
+      "description": "High-Re case: fully turbulent, massive leeward separation, thinner boundary layer"
+    }
+  },
+  "yaw_angles_deg": [
+    0,
+    30,
+    45
+  ],
+  "experimental_techniques": {
+    "surface_pressure": "128+ static pressure taps",
+    "skin_friction": "Oil Film Interferometry (OFI) + LDV wall-shear",
+    "velocity_fields": "Stereo-PIV (2D planes), LDV (point measurements)",
+    "flow_visualization": "Oil flow (surface streamlines)",
+    "boundary_conditions": "Inflow BL profiles (pitot rake + hot-wire)"
+  },
+  "validation_profiles": {
+    "x_H_stations": [
+      0.5,
+      1.0,
+      1.5,
+      2.0,
+      3.0,
+      5.0
+    ],
+    "z_H_stations": [
+      0.0,
+      0.5,
+      1.0
+    ],
+    "quantities": [
+      "U/U_inf",
+      "V/U_inf",
+      "W/U_inf",
+      "u'u'/U_inf^2",
+      "v'v'/U_inf^2",
+      "u'v'/U_inf^2"
+    ]
+  },
+  "known_rans_failures": {
+    "SST_45deg": "Menter SST erroneously predicts asymmetric wakes at 45\u00b0 yaw across all Reynolds numbers and grid densities",
+    "SA_separation": "SA miscalculates separation onset location and volumetric extent of leeward separation bubble",
+    "boussinesq_breakdown": "Both SA and SST fail to capture 3D non-equilibrium turbulent boundary layer effects due to inherent limitations of the Boussinesq (linear eddy-viscosity) approximation in regions of strong streamline curvature and pressure-gradient sign reversals"
+  },
+  "references": [
+    {
+      "authors": "Lowe, K.T., Simpson, R.L., Schetz, J.A., et al.",
+      "title": "Experimental Design for the BeVERLI Hill Flow Separation Experiment",
+      "venue": "AIAA Paper 2022-0329",
+      "year": 2022,
+      "doi": "10.2514/6.2022-0329"
+    },
+    {
+      "authors": "Rahmani, S., Lowe, K.T., Simpson, R.L., et al.",
+      "title": "Turbulence Measurements on the BeVERLI Hill",
+      "venue": "Experiments in Fluids 64",
+      "year": 2023,
+      "doi": "10.1007/s00348-023-03607-w"
+    },
+    {
+      "authors": "Lakebrink, M.T., Mani, M., Rumsey, C.L.",
+      "title": "CFD Predictions for the BeVERLI Hill",
+      "venue": "AIAA Paper 2023-3263",
+      "year": 2023,
+      "doi": "10.2514/6.2023-3263"
+    }
+  ]
+}

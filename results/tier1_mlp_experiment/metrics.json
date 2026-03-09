@@ -1,0 +1,46 @@
+{
+  "experiment": "Tier 1 MLP -- NACA Force Coefficient Surrogate",
+  "description": "5-layer MLP trained on 100 NACA airfoil cases generated via analytical aerodynamic model (thin airfoil theory + viscous corrections)",
+  "n_cases": 208,
+  "n_train": 166,
+  "n_test": 42,
+  "architecture": [
+    64,
+    64,
+    32,
+    32,
+    16
+  ],
+  "epochs_trained": 419,
+  "features": [
+    "alpha_rad",
+    "t_over_c",
+    "log10_Re",
+    "Mach"
+  ],
+  "targets": [
+    "CL",
+    "CD",
+    "CM"
+  ],
+  "metrics": {
+    "CL": {
+      "RMSE": 0.022762509082408948,
+      "MAE": 0.017634461960907635,
+      "R2": 0.9973039205430038,
+      "MAPE": 3.4826470146445665
+    },
+    "CD": {
+      "RMSE": 0.0007172983663342309,
+      "MAE": 0.0006445357056451816,
+      "R2": 0.9949013410389544,
+      "MAPE": 4.339713646247577
+    },
+    "CM": {
+      "RMSE": 4.864397180540395e-05,
+      "MAE": 3.988836652442316e-05,
+      "R2": 0.9992587842708245,
+      "MAPE": 0.8553006792247041
+    }
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "iteration": 1,
+  "objective": 0.4060736880601998,
+  "gradient_norm": 0,
+  "converged": true,
+  "n_flow_solves": 102,
+  "n_adjoint_solves": 0
+}

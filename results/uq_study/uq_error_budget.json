@@ -1,0 +1,186 @@
+{
+  "n_cases": 11,
+  "n_quantities": 16,
+  "mean_gci_pct": 9.83491316129686,
+  "mean_input_var_pct": 0.9166666666666637,
+  "worst_case": "bump_3d_channel/Cf_crest",
+  "worst_uncertainty_pct": 69.02218846139263,
+  "entries": [
+    {
+      "case": "axisymmetric_jet",
+      "quantity": "core_length_xD",
+      "gci_pct": 2.571590023762007,
+      "model_pct": 15.0,
+      "ml_epistemic_pct": 0.0,
+      "ai_model_pct": 0.0,
+      "input_pct": 1.6000000000000014,
+      "total_pct": 15.302714636635955,
+      "dominant_input": "Turbulence Intensity"
+    },
+    {
+      "case": "bachalo_johnson",
+      "quantity": "x_sep_xc",
+      "gci_pct": 0.0,
+      "model_pct": 20.0,
+      "ml_epistemic_pct": 0.0,
+      "ai_model_pct": 0.0,
+      "input_pct": 0.0,
+      "total_pct": 20.0,
+      "dominant_input": ""
+    },
+    {
+      "case": "backward_facing_step",
+      "quantity": "x_reat_xH",
+      "gci_pct": 1.351995811771967,
+      "model_pct": 5.0,
+      "ml_epistemic_pct": 3.2,
+      "ai_model_pct": 0.0,
+      "input_pct": 0.9999999999999821,
+      "total_pct": 6.169918368588753,
+      "dominant_input": "Turbulence Intensity"
+    },
+    {
+      "case": "beverli_hill",
+      "quantity": "x_sep_xH",
+      "gci_pct": 12.17713243301227,
+      "model_pct": 25.0,
+      "ml_epistemic_pct": 0.0,
+      "ai_model_pct": 0.0,
+      "input_pct": 0.0,
+      "total_pct": 27.807958470393316,
+      "dominant_input": ""
+    },
+    {
+      "case": "boeing_gaussian_bump",
+      "quantity": "bubble_len",
+      "gci_pct": 20.402171745245454,
+      "model_pct": 45.0,
+      "ml_epistemic_pct": 0.0,
+      "ai_model_pct": 0.0,
+      "input_pct": 0.0,
+      "total_pct": 49.40899322919353,
+      "dominant_input": ""
+    },
+    {
+      "case": "boeing_gaussian_bump",
+      "quantity": "x_sep_xL",
+      "gci_pct": 11.297703638105801,
+      "model_pct": 12.0,
+      "ml_epistemic_pct": 0.0,
+      "ai_model_pct": 0.0,
+      "input_pct": 0.0,
+      "total_pct": 16.481447372560126,
+      "dominant_input": ""
+    },
+    {
+      "case": "bump_3d_channel",
+      "quantity": "Cf_crest",
+      "gci_pct": 56.25000000000002,
+      "model_pct": 40.0,
+      "ml_epistemic_pct": 0.0,
+      "ai_model_pct": 0.0,
+      "input_pct": 0.0,
+      "total_pct": 69.02218846139263,
+      "dominant_input": ""
+    },
+    {
+      "case": "flat_plate",
+      "quantity": "Cf_x1",
+      "gci_pct": 1.3230106676998938,
+      "model_pct": 0.0,
+      "ml_epistemic_pct": 0.0,
+      "ai_model_pct": 0.0,
+      "input_pct": 0.0,
+      "total_pct": 1.3230106676998938,
+      "dominant_input": ""
+    },
+    {
+      "case": "naca_0012_stall",
+      "quantity": "CD_alpha10",
+      "gci_pct": 0.5393660379316515,
+      "model_pct": 3.0,
+      "ml_epistemic_pct": 0.0,
+      "ai_model_pct": 1.5,
+      "input_pct": 0.40000000000000935,
+      "total_pct": 3.420660129693404,
+      "dominant_input": "Turbulence Intensity"
+    },
+    {
+      "case": "naca_0012_stall",
+      "quantity": "CL_alpha10",
+      "gci_pct": 0.14566748855665845,
+      "model_pct": 1.5,
+      "ml_epistemic_pct": 0.0,
+      "ai_model_pct": 1.2,
+      "input_pct": 0.2999999999999989,
+      "total_pct": 1.949671515210294,
+      "dominant_input": "Turbulence Intensity"
+    },
+    {
+      "case": "nasa_crm",
+      "quantity": "CD_counts",
+      "gci_pct": 0.0,
+      "model_pct": 4.0,
+      "ml_epistemic_pct": 5.5,
+      "ai_model_pct": 14.5,
+      "input_pct": 0.0,
+      "total_pct": 16.015617378046965,
+      "dominant_input": ""
+    },
+    {
+      "case": "nasa_crm",
+      "quantity": "CL_alpha2.75",
+      "gci_pct": 0.0,
+      "model_pct": 2.5,
+      "ml_epistemic_pct": 3.0,
+      "ai_model_pct": 11.2,
+      "input_pct": 0.0,
+      "total_pct": 11.861281549647154,
+      "dominant_input": ""
+    },
+    {
+      "case": "nasa_crm",
+      "quantity": "wing_root_sep",
+      "gci_pct": 0.0,
+      "model_pct": 18.0,
+      "ml_epistemic_pct": 0.0,
+      "ai_model_pct": 0.0,
+      "input_pct": 0.0,
+      "total_pct": 18.0,
+      "dominant_input": ""
+    },
+    {
+      "case": "nasa_hump",
+      "quantity": "Cp_min",
+      "gci_pct": 5.875356244485013,
+      "model_pct": 8.0,
+      "ml_epistemic_pct": 2.1,
+      "ai_model_pct": 2.5,
+      "input_pct": 0.5999999999999908,
+      "total_pct": 10.466126838501864,
+      "dominant_input": "Inlet Velocity"
+    },
+    {
+      "case": "nasa_hump",
+      "quantity": "x_reat_xc",
+      "gci_pct": 3.378378095248566,
+      "model_pct": 20.0,
+      "ml_epistemic_pct": 4.5,
+      "ai_model_pct": 3.8,
+      "input_pct": 1.5999999999999996,
+      "total_pct": 21.181676953311683,
+      "dominant_input": "Turbulence Intensity"
+    },
+    {
+      "case": "periodic_hill",
+      "quantity": "x_reat_xh",
+      "gci_pct": 2.706585749743021,
+      "model_pct": 15.0,
+      "ml_epistemic_pct": 6.0,
+      "ai_model_pct": 7.2,
+      "input_pct": 0.0,
+      "total_pct": 17.893172061451597,
+      "dominant_input": ""
+    }
+  ]
+}

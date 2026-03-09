@@ -1,0 +1,61 @@
+{
+  "case": "NASA 3D Gaussian Speed Bump (SBSE)",
+  "tmr_url": "https://turbmodels.larc.nasa.gov/Other_LES_Data/GaussianBump.html",
+  "geometry": {
+    "type": "3D Gaussian bump on flat plate",
+    "h_L": 0.085,
+    "x0_L": 0.195,
+    "z0_L": 0.06,
+    "formula": "h(x,z) = h0 * exp(-(x/x0)^2 - (z/z0)^2)",
+    "reference_length": "L (bump length)"
+  },
+  "flow_conditions": {
+    "mach": 0.176,
+    "reynolds": 2000000,
+    "temperature_freestream": 300.0,
+    "pressure_freestream": 101325.0,
+    "velocity_freestream": 60.0,
+    "reference_length": 1.0,
+    "description": "Subsonic flow over Gaussian bump; prolonged adverse PG leads to 3D smooth-body separation on leeward side"
+  },
+  "wmles_reference": {
+    "x_sep_xL": 0.75,
+    "x_reat_xL": 1.35,
+    "bubble_length_xL": 0.6,
+    "Cf_recovery_xL_1_8": 0.0025,
+    "Cp_min_centerline": -0.45
+  },
+  "sa_baseline": {
+    "x_sep_xL": 0.82,
+    "x_reat_xL": 1.15,
+    "bubble_length_xL": 0.33,
+    "description": "Standard SA under-predicts bubble by ~45%"
+  },
+  "sa_rc_corrected": {
+    "x_sep_xL": 0.78,
+    "x_reat_xL": 1.25,
+    "bubble_length_xL": 0.47,
+    "description": "SA-RC improves bubble prediction by ~8-14%"
+  },
+  "references": [
+    {
+      "authors": "Williams, O., Samuell, M., Sarwas, E.S., et al.",
+      "title": "Experimental Study of a Gaussian Speed Bump",
+      "venue": "AIAA Paper 2020-1087",
+      "year": 2020
+    },
+    {
+      "authors": "Iyer, P.S. & Malik, M.R.",
+      "title": "WMLES of Flow over a Gaussian Bump",
+      "venue": "NASA TM 2020-220469",
+      "year": 2020
+    },
+    {
+      "authors": "Gray, P.C., et al.",
+      "title": "Assessment of RANS Models for the Gaussian Bump",
+      "venue": "AIAA J. 59(10)",
+      "year": 2021,
+      "doi": "10.2514/1.J060234"
+    }
+  ]
+}

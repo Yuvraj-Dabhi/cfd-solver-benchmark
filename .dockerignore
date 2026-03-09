@@ -1,0 +1,20 @@
+# Docker build context exclusions
+.git
+.github
+__pycache__
+*.pyc
+*.pyo
+.pytest_cache
+runs/
+results/
+plots/
+*.vtu
+*.vtk
+*.dat
+*.csv
+*.npz
+.vscode
+.idea
+*.egg-info
+dist/
+build/

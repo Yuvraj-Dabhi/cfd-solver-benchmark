@@ -1,0 +1,27 @@
+{
+  "beta_prediction": {
+    "RMSE": 0.44689926772174393,
+    "R2": 0.9207844579594787,
+    "MAPE": 175.7474472629185,
+    "n_train": 17672,
+    "n_test": 4418
+  },
+  "cf_correction": {
+    "RMSE_SA": 0.001118339032206378,
+    "RMSE_corrected": 0.0008711479218767216,
+    "reduction_pct": 22.103414368178807
+  },
+  "features": [
+    "q1_strain_turbulence",
+    "q2_wall_distance",
+    "q3_strain_rotation",
+    "q4_pressure_gradient",
+    "q5_viscosity_ratio"
+  ],
+  "architecture": [
+    64,
+    64,
+    32
+  ],
+  "framework": "PyTorch"
+}

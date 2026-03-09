@@ -1,0 +1,40 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Pytest / Coverage
+.pytest_cache/
+.coverage
+htmlcov/
+tmp_check/
+pytest-cache-files*/
+.tmp_pytest/
+
+# CFD simulation outputs (SU2)
+runs/
+*.su2
+*.vtu
+*.csv
+history*
+restart_flow.dat
+su2_log.txt
+
+# Virtual environments
+v/
+venv/
+env/
+
+# Editor / OS files
+.vscode/
+.idea/
+.DS_Store
+*.swp
+
+# ML Checkpoints
+*.pt
+*.pth
+
+# Top-level plots (unless explicitly committed)
+*.png
+*.pdf
