@@ -466,7 +466,7 @@ class ParametricManager:
         lines.append("=" * 70)
         return "\n".join(lines)
 
-    def to_dataframe(self) -> "pd.DataFrame":
+    def to_dataframe(self):  # -> pd.DataFrame
         """Export expanded cases as a pandas DataFrame."""
         try:
             import pandas as pd

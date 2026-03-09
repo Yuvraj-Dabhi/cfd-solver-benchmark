@@ -447,7 +447,7 @@ ORIGINAL_COEFF = {
 }
 
 
-def naca0012_tmr_y(x: "np.ndarray") -> "np.ndarray":
+def naca0012_tmr_y(x):
     """
     Compute half-thickness y(x) for the TMR NACA 0012 (sharp TE, chord=1).
 
@@ -475,7 +475,7 @@ def naca0012_tmr_y(x: "np.ndarray") -> "np.ndarray":
                       + c["a5"] * x**4)
 
 
-def naca0012_tmr_surface(n_pts: int = 200) -> "tuple[np.ndarray, np.ndarray]":
+def naca0012_tmr_surface(n_pts: int = 200):
     """
     Generate NACA 0012 surface coordinates using the TMR sharp-TE definition.
 

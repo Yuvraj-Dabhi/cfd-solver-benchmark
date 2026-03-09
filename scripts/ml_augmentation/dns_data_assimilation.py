@@ -249,7 +249,7 @@ class DNSFieldExtractor:
 
         return report
 
-    def to_fiml_case(self) -> "FIMLCaseData":
+    def to_fiml_case(self):  # -> FIMLCaseData
         """Convert to FIMLCaseData for FIML pipeline consumption."""
         from scripts.ml_augmentation.fiml_pipeline import FIMLCaseData
 

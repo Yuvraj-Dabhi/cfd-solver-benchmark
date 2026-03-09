@@ -310,7 +310,7 @@ class PhysicsInformedSeparation:
         except ImportError:
             self._tf_available = False
 
-    def navier_stokes_residual(self, xy: "tf.Tensor") -> "tf.Tensor":
+    def navier_stokes_residual(self, xy):  # tf.Tensor -> tf.Tensor
         """
         Compute NS residuals via automatic differentiation.
 
