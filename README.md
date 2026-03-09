@@ -1,5 +1,7 @@
 # CFD Solver Benchmark for Flow Separation Prediction
 
+[![CI](https://github.com/Yuvraj-Dabhi/cfd-solver-benchmark/actions/workflows/ci.yml/badge.svg)](https://github.com/Yuvraj-Dabhi/cfd-solver-benchmark/actions/workflows/ci.yml)
+
 **[Python 3.10+]** | **[SU2 v8.4.0]** | **[1616+ Tests Passed]** | **[20 Benchmark Cases]** | **[15 Turbulence Models]** | **[74 ML Modules]**
 
 Systematic benchmarking of RANS turbulence models for separated-flow prediction,

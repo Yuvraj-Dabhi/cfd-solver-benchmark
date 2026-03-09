@@ -1,0 +1,20 @@
+{
+  "SCP": {
+    "coverage": 0.825,
+    "mean_width": 0.3045506108128664
+  },
+  "CQR": {
+    "coverage": 0.95,
+    "mean_width": 4.774532321907509
+  },
+  "Jackknife+": {
+    "coverage": 0.95,
+    "mean_width": 0.28408426250866764
+  },
+  "OOD": {
+    "ood_fraction": 0.0,
+    "threshold": 0.6091012216257328,
+    "n_flagged": 0,
+    "n_total": 40
+  }
+}
