@@ -1,0 +1,34 @@
+{
+  "config": {
+    "coarse_res": 8,
+    "fine_res": 32,
+    "upscale": 4
+  },
+  "unconditioned": {
+    "spectral_error": 1.1397,
+    "continuity_residual": 0.109129
+  },
+  "tbnn_conditioned": {
+    "spectral_error": 1.1397,
+    "continuity_residual": 0.109129,
+    "mean_anisotropy_intensity": 0.0134
+  },
+  "discriminator": {
+    "naive_score": 0.5005,
+    "sr_score": 0.51
+  },
+  "multiscale": [
+    {
+      "upscale": 2,
+      "fine_res": 16,
+      "spectral_error": 0.9084,
+      "continuity_residual": 0.115374
+    },
+    {
+      "upscale": 4,
+      "fine_res": 32,
+      "spectral_error": 1.1397,
+      "continuity_residual": 0.109129
+    }
+  ]
+}
