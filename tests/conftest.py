@@ -47,4 +47,5 @@ def _patch_windows_mkdir_mode() -> None:
 _prepare_pytest_temp_root()
 _patch_windows_mkdir_mode()
 
-# Apply once at collection time so tempfile-based tests work on 
+# Apply once at collection time so tempfile-based tests work on Windows ACL edge cases.
+ensure_tempfile_compat()

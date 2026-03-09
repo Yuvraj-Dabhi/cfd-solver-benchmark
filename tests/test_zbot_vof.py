@@ -19,7 +19,7 @@ sys.path.insert(0, str(PROJECT_ROOT))
 class TestZBOTCaseGen:
     
     def test_case_parameters(self):
-        from run_zbot_vof import CASES
+        from simulations.run_zbot_vof import CASES
         
         std = CASES["standard"]
         assert std.inlet_velocity == 0.5
@@ -34,14 +34,14 @@ class TestZBOTCaseGen:
         assert lg.g_micro == 1e-8
         
     def test_inlet_flow_rate(self):
-        from run_zbot_vof import CASES
+        from simulations.run_zbot_vof import CASES
         
         std = CASES["standard"]
         expected_v_in = np.pi * (0.005)**2 * 0.5
         assert std.V_inlet == pytest.approx(expected_v_in)
         
     def test_case_directory_generation(self, tmp_path):
-        from run_zbot_vof import CASES, FoamCaseGenerator, write_blockMeshDict, write_setFieldsDict, write_fvOptions, generate_fvSchemes, generate_fvSolution, generate_transportProperties, write_0_fields
+        from simulations.run_zbot_vof import CASES, FoamCaseGenerator, write_blockMeshDict, write_setFieldsDict, write_fvOptions, generate_fvSchemes, generate_fvSolution, generate_transportProperties, write_0_fields
         
         case = CASES["standard"]
         test_dir = tmp_path / "zbot_test"
@@ -77,7 +77,7 @@ class TestZBOTCaseGen:
         assert "type wedge;" in blockMesh_content
 
     def test_fvOptions_ramp(self, tmp_path):
-        from run_zbot_vof import CASES, write_fvOptions
+        from simulations.run_zbot_vof import CASES, write_fvOptions
         case = CASES["standard"]
         test_dir = tmp_path / "fvOpt_test"
         (test_dir / "system").mkdir(parents=True)

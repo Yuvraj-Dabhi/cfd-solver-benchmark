@@ -13,8 +13,8 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
 # Test extractors
-from run_swbli import HypersonicExtractor
-from run_heated_jet import VariablePropertyExtractor
+from simulations.run_swbli import HypersonicExtractor
+from simulations.run_heated_jet import VariablePropertyExtractor
 from scripts.ml_augmentation.hypersonic_extrapolation import (
     VariablePropertyMLTester,
     HypersonicExtrapolationReport,

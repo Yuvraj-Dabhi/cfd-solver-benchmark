@@ -15,7 +15,7 @@ sys.path.insert(0, str(PROJECT_ROOT))
 class TestHeatedJetGen:
     
     def test_su2_config_heated_jet(self, tmp_path):
-        from run_heated_jet import generate_su2_config
+        from simulations.run_heated_jet import generate_su2_config
         
         cfg_path = generate_su2_config(model="SST", case_dir=tmp_path)
         content = cfg_path.read_text()
@@ -33,7 +33,7 @@ class TestHeatedJetGen:
 class TestSWBLIGen:
 
     def test_swbli_su2_config(self, tmp_path):
-        from run_swbli import generate_su2_config
+        from simulations.run_swbli import generate_su2_config
         
         # Test M=5 2D case
         cfg_m5 = generate_su2_config("M5_2D", tmp_path / "M5", "swbli_L1_coarse.su2", model="SA", n_iter=100)
@@ -49,7 +49,7 @@ class TestSWBLIGen:
         
     def test_swbli_openfoam_config(self, tmp_path):
         try:
-            from run_swbli import generate_openfoam_config
+            from simulations.run_swbli import generate_openfoam_config
         except ImportError:
             pytest.skip("openfoam_utils not available")
             

@@ -1,0 +1,28 @@
+{
+  "transfer": {
+    "source_reward": 0.5257587026544495,
+    "source_bubble_reduction": 0.03505181373125105,
+    "target_reward": 0.5157725086725182,
+    "target_reward_std": 0.0,
+    "target_bubble_reduction": 0.03438607373781572,
+    "transfer_efficiency": 0.9810061270854615,
+    "grid_levels": {
+      "source": "coarse",
+      "target": "fine"
+    }
+  },
+  "baselines": {
+    "uncontrolled": {
+      "reward": 0.0,
+      "bubble_length": 0.3733030996784863
+    },
+    "constant_blowing": {
+      "reward": 3.333490666448308,
+      "bubble_length": 0.2878542524449993
+    },
+    "periodic_forcing": {
+      "mean_reward": -2.027179174348015,
+      "bubble_length": 0.5798999504808918
+    }
+  }
+}

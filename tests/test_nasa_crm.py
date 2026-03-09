@@ -2,7 +2,7 @@ import pytest
 import numpy as np
 from pathlib import Path
 
-from run_nasa_crm import (
+from simulations.run_nasa_crm import (
     generate_synthetic_crm_results,
     CRMPostprocessor,
     CRMAlphaSweep,

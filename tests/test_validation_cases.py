@@ -154,7 +154,7 @@ class TestBFSCrossDataset:
 
     def test_bfs_datasets_defined(self):
         """Both BFS datasets should be defined."""
-        from run_bfs_validation import DATASETS
+        from simulations.run_bfs_validation import DATASETS
         assert "driver_seegmiller" in DATASETS
         assert "kim_et_al" in DATASETS
 
@@ -172,13 +172,13 @@ class TestBFSCrossDataset:
 
     def test_bfs_sst_within_uncertainty(self):
         """SST should predict BFS reattachment within 5% of experiment."""
-        from run_bfs_validation import compare_datasets_for_model
+        from simulations.run_bfs_validation import compare_datasets_for_model
         results = compare_datasets_for_model("SST")
         assert abs(results["driver_seegmiller"]["error_pct"]) < 5.0
 
     def test_bfs_ke_underpredicts(self):
         """k-ε should systematically underpredict x_R."""
-        from run_bfs_validation import compare_datasets_for_model
+        from simulations.run_bfs_validation import compare_datasets_for_model
         results = compare_datasets_for_model("KE")
         assert results["driver_seegmiller"]["error_pct"] < 0  # Underprediction
 
@@ -188,7 +188,7 @@ class TestJetRunner:
 
     def test_jet_config_generation(self):
         """SU2 config should generate for jet case."""
-        from run_axisymmetric_jet import generate_su2_config
+        from simulations.run_axisymmetric_jet import generate_su2_config
         with tempfile.TemporaryDirectory() as tmpdir:
             cfg = generate_su2_config(Path(tmpdir))
             assert cfg.exists()
@@ -198,7 +198,7 @@ class TestJetRunner:
 
     def test_jet_centerline_decay_error(self):
         """Centerline decay error should compute valid metrics."""
-        from run_axisymmetric_jet import (
+        from simulations.run_axisymmetric_jet import (
             generate_synthetic_prediction,
             compute_centerline_decay_error,
         )
@@ -209,7 +209,7 @@ class TestJetRunner:
 
     def test_jet_ke_round_jet_anomaly(self):
         """k-ε should show the round-jet anomaly (short core)."""
-        from run_axisymmetric_jet import (
+        from simulations.run_axisymmetric_jet import (
             generate_synthetic_prediction,
             compute_centerline_decay_error,
         )
@@ -226,7 +226,7 @@ class TestBump3DRunner:
 
     def test_bump3d_config_generation(self):
         """SU2 config with SA-RC should include RC option."""
-        from run_bump_3d_channel import generate_su2_config
+        from simulations.run_bump_3d_channel import generate_su2_config
         with tempfile.TemporaryDirectory() as tmpdir:
             cfg = generate_su2_config(Path(tmpdir), model="SA-RC")
             content = cfg.read_text()
@@ -234,7 +234,7 @@ class TestBump3DRunner:
 
     def test_bump3d_model_comparison(self):
         """Model comparison should show SA-RC improvement over SA."""
-        from run_bump_3d_channel import compare_models
+        from simulations.run_bump_3d_channel import compare_models
         results = compare_models()
         assert results["SA-RC"]["bubble_len"] > results["SA"]["bubble_len"]
         assert abs(results["SA-RC"]["bubble_error_pct"]) < abs(results["SA"]["bubble_error_pct"])
@@ -245,7 +245,7 @@ class TestCRMRunner:
 
     def test_crm_config_generation(self):
         """CRM config should generate with correct Mach and Re."""
-        from run_nasa_crm import generate_su2_config
+        from simulations.run_nasa_crm import generate_su2_config
         with tempfile.TemporaryDirectory() as tmpdir:
             cfg = generate_su2_config(Path(tmpdir))
             content = cfg.read_text()
@@ -254,7 +254,7 @@ class TestCRMRunner:
 
     def test_crm_slurm_generation(self):
         """SLURM script should be generated."""
-        from run_nasa_crm import generate_slurm_script
+        from simulations.run_nasa_crm import generate_slurm_script
         with tempfile.TemporaryDirectory() as tmpdir:
             script = generate_slurm_script(Path(tmpdir), "crm_SA.cfg", n_procs=256)
             content = script.read_text()
@@ -263,14 +263,14 @@ class TestCRMRunner:
 
     def test_crm_dpw_scatter_check(self):
         """DPW scatter check should identify within-band results."""
-        from run_nasa_crm import check_within_dpw_scatter
+        from simulations.run_nasa_crm import check_within_dpw_scatter
         result = check_within_dpw_scatter(CL=0.505, CD_counts=254.0)
         assert result["CL_within"]
         assert result["CD_within"]
 
     def test_crm_dpw_scatter_out_of_band(self):
         """Should flag results outside DPW scatter band."""
-        from run_nasa_crm import check_within_dpw_scatter
+        from simulations.run_nasa_crm import check_within_dpw_scatter
         result = check_within_dpw_scatter(CL=0.55, CD_counts=270.0)
         assert not result["CL_within"]
         assert not result["CD_within"]

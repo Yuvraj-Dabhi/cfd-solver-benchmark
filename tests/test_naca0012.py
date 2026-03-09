@@ -25,7 +25,7 @@ import pytest
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from run_naca0012 import (
+from simulations.run_naca0012 import (
     CASE_CONFIG,
     GRID_LEVELS,
     GRID_LEVEL_SPECS,
