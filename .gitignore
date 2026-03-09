@@ -16,6 +16,7 @@ runs/
 *.su2
 *.vtu
 *.csv
+!experimental_data/**/*.csv
 history*
 restart_flow.dat
 su2_log.txt
